@@ -40,7 +40,7 @@ export class AudioSystem {
     this.propPulse.frequency.setValueAtTime(26, now);
     pulseGain.gain.setValueAtTime(0.018, now);
     this.propGain.gain.setValueAtTime(0.0001, now);
-    this.propGain.gain.exponentialRampToValueAtTime(0.045, now + 0.18);
+    this.propGain.gain.exponentialRampToValueAtTime(0.024, now + 0.18);
 
     this.propOscillator.connect(this.propGain);
     this.propPulse.connect(pulseGain).connect(this.propGain);
@@ -69,7 +69,7 @@ export class AudioSystem {
     const boostLift = boosting ? 22 : 0;
     this.propOscillator.frequency.setTargetAtTime(72 + ratio * 62 + boostLift, now, 0.08);
     this.propPulse.frequency.setTargetAtTime(20 + ratio * 20 + (boosting ? 8 : 0), now, 0.08);
-    this.propGain.gain.setTargetAtTime(0.034 + ratio * 0.036 + (boosting ? 0.018 : 0), now, 0.08);
+    this.propGain.gain.setTargetAtTime(0.018 + ratio * 0.02 + (boosting ? 0.01 : 0), now, 0.08);
   }
 
   pickup(index: number): void {
