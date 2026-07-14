@@ -38,16 +38,16 @@ export class Hud {
     if (state.mode === 'menu') {
       this.hideOverlay();
     } else if (state.mode === 'won') {
-      this.statusLine.textContent = 'Flight path cleared';
-      this.showOverlay('Mission complete', 'Press R or Enter to fly again');
+      this.statusLine.textContent = '航线已清空';
+      this.showOverlay('任务完成', '按 R 或 Enter 再飞一次');
     } else if (state.mode === 'lost') {
-      this.statusLine.textContent = 'Aircraft down';
-      this.showOverlay('Crashed', 'Press R or Enter to restart');
+      this.statusLine.textContent = '飞机坠毁';
+      this.showOverlay('坠机', '按 R 或 Enter 重新开始');
     } else if (state.mode === 'paused') {
-      this.statusLine.textContent = 'Paused';
-      this.showOverlay('Paused', 'Press P or Esc to resume');
+      this.statusLine.textContent = '已暂停';
+      this.showOverlay('已暂停', '按 P 或 Esc 继续');
     } else {
-      this.statusLine.textContent = state.gates > 0 ? 'Find a repair hammer' : 'Evade enemy fire';
+      this.statusLine.textContent = state.gates > 0 ? '寻找扳手维修' : '躲避敌机火力';
       this.hideOverlay();
     }
   }

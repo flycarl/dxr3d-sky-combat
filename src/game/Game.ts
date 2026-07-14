@@ -50,6 +50,14 @@ type RepairPickup = {
   phase: number;
 };
 
+type ExplosionParticle = {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  velocity: THREE.Vector3;
+  age: number;
+  lifetime: number;
+  startScale: number;
+};
+
 export class Game {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -61,6 +69,7 @@ export class Game {
   private readonly shots: EnemyShot[] = [];
   private readonly playerShots: PlayerShot[] = [];
   private readonly repairs: RepairPickup[] = [];
+  private readonly explosions: ExplosionParticle[] = [];
   private readonly audio = new AudioSystem();
   private readonly hud = new Hud();
   private readonly cameraRig = new CameraRig(this.camera);
@@ -163,6 +172,7 @@ export class Game {
       this.audio.updatePropeller(speedRatio, this.input.isDashHeld());
     }
 
+    this.updateExplosions(delta);
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, 58 + speedRatio * 5, 1 - Math.exp(-delta * 3));
     this.camera.updateProjectionMatrix();
     this.cameraRig.update(delta, this.player.group.position, this.player.group.rotation.y, this.tuning.cameraLag, speedRatio);
@@ -415,14 +425,14 @@ export class Game {
       [-8, 10, -34],
     ];
     positions.forEach(([x, y, z], index) => {
-      const group = this.createRepairHammer();
+      const group = this.createRepairWrench();
       group.position.set(x, y, z);
       this.world.add(group);
       this.repairs.push({ group, active: true, phase: index * 1.4 });
     });
   }
 
-  private createRepairHammer(): THREE.Group {
+  private createRepairWrench(): THREE.Group {
     const group = new THREE.Group();
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(1.25, 0.045, 8, 42),
@@ -430,26 +440,60 @@ export class Game {
     );
     group.add(ring);
 
+    const metal = new THREE.MeshStandardMaterial({
+      color: '#cfd8d8',
+      roughness: 0.24,
+      metalness: 0.7,
+      emissive: '#0d4f49',
+      emissiveIntensity: 0.22,
+    });
+    const accent = new THREE.MeshStandardMaterial({
+      color: '#48d6c5',
+      roughness: 0.28,
+      metalness: 0.45,
+      emissive: '#0d4f49',
+      emissiveIntensity: 0.32,
+    });
+
     const handle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 1.35, 0.16),
-      new THREE.MeshStandardMaterial({ color: '#6c4a2c', roughness: 0.62 }),
+      new THREE.BoxGeometry(0.16, 1.12, 0.14),
+      metal,
     );
+    handle.position.set(-0.04, -0.22, 0);
     handle.rotation.z = -0.55;
+    handle.castShadow = true;
     group.add(handle);
 
-    const head = new THREE.Mesh(
-      new THREE.BoxGeometry(0.94, 0.28, 0.34),
-      new THREE.MeshStandardMaterial({
-        color: '#48d6c5',
-        roughness: 0.26,
-        metalness: 0.35,
-        emissive: '#0d4f49',
-        emissiveIntensity: 0.35,
-      }),
+    const grip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.32, 0.22, 0.16),
+      accent,
     );
-    head.position.set(0.28, 0.48, 0);
-    head.rotation.z = -0.55;
-    group.add(head);
+    grip.position.set(-0.36, -0.72, 0);
+    grip.rotation.z = -0.55;
+    grip.castShadow = true;
+    group.add(grip);
+
+    const jaw = new THREE.Mesh(
+      new THREE.TorusGeometry(0.34, 0.06, 8, 28, Math.PI * 1.48),
+      metal,
+    );
+    jaw.position.set(0.28, 0.46, 0);
+    jaw.rotation.z = -0.26;
+    jaw.castShadow = true;
+    group.add(jaw);
+
+    const toothA = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.14), metal);
+    toothA.position.set(0.53, 0.63, 0);
+    toothA.rotation.z = 0.28;
+    toothA.castShadow = true;
+    group.add(toothA);
+
+    const toothB = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.14), metal);
+    toothB.position.set(0.42, 0.22, 0);
+    toothB.rotation.z = -0.7;
+    toothB.castShadow = true;
+    group.add(toothB);
+
     return group;
   }
 
@@ -552,6 +596,7 @@ export class Game {
       });
 
       if (enemy) {
+        this.createExplosion(enemy.group.position, '#ff8a35');
         enemy.active = false;
         enemy.group.visible = false;
         enemy.respawnTimer = 4.5;
@@ -574,7 +619,7 @@ export class Game {
         this.audio.crash();
         this.hud.flashHit();
         this.removeShot(index);
-        if (this.hits >= this.maxHits) this.mode = 'lost';
+        if (this.hits >= this.maxHits) this.crashPlayer();
       } else if (shot.age > 4) {
         this.removeShot(index);
       }
@@ -595,6 +640,61 @@ export class Game {
     shot.mesh.geometry.dispose();
     const materials = Array.isArray(shot.mesh.material) ? shot.mesh.material : [shot.mesh.material];
     materials.forEach((material) => material.dispose());
+  }
+
+  private createExplosion(position: THREE.Vector3, color: string): void {
+    const baseColor = new THREE.Color(color);
+    const smokeColor = new THREE.Color('#2a2f31');
+    const particleCount = 24;
+
+    for (let index = 0; index < particleCount; index += 1) {
+      const material = new THREE.MeshBasicMaterial({
+        color: index % 4 === 0 ? smokeColor : baseColor.clone().lerp(new THREE.Color('#fff2a8'), Math.random() * 0.45),
+        transparent: true,
+        opacity: index % 4 === 0 ? 0.58 : 0.92,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(index % 4 === 0 ? 0.16 : 0.11, 8, 6), material);
+      mesh.position.copy(position);
+      mesh.scale.setScalar(0.4 + Math.random() * 0.7);
+
+      const direction = new THREE.Vector3(
+        THREE.MathUtils.randFloatSpread(1),
+        THREE.MathUtils.randFloat(0.15, 1.05),
+        THREE.MathUtils.randFloatSpread(1),
+      ).normalize();
+      const speed = THREE.MathUtils.randFloat(4.5, 10.5);
+      this.world.add(mesh);
+      this.explosions.push({
+        mesh,
+        velocity: direction.multiplyScalar(speed),
+        age: 0,
+        lifetime: THREE.MathUtils.randFloat(0.48, 0.9),
+        startScale: mesh.scale.x,
+      });
+    }
+  }
+
+  private updateExplosions(delta: number): void {
+    for (let index = this.explosions.length - 1; index >= 0; index -= 1) {
+      const particle = this.explosions[index];
+      particle.age += delta;
+      const progress = THREE.MathUtils.clamp(particle.age / particle.lifetime, 0, 1);
+      particle.mesh.position.addScaledVector(particle.velocity, delta);
+      particle.velocity.multiplyScalar(Math.max(0.88, 1 - delta * 1.8));
+      particle.velocity.y -= delta * 1.4;
+      particle.mesh.scale.setScalar(particle.startScale * (1 + progress * 2.8));
+      particle.mesh.material.opacity = (1 - progress) * 0.92;
+
+      if (particle.age >= particle.lifetime) this.removeExplosion(index);
+    }
+  }
+
+  private removeExplosion(index: number): void {
+    const [particle] = this.explosions.splice(index, 1);
+    this.world.remove(particle.mesh);
+    particle.mesh.geometry.dispose();
+    particle.mesh.material.dispose();
   }
 
   private updateRepairs(elapsed: number): void {
@@ -645,10 +745,7 @@ export class Game {
   private checkGroundCrash(): void {
     const ground = this.getTerrainHeight(this.player.group.position.x, this.player.group.position.z);
     if (this.player.group.position.y <= ground + 0.9) {
-      this.mode = 'lost';
-      this.hits = this.maxHits;
-      this.audio.stopPropeller();
-      this.audio.crash();
+      this.crashPlayer();
     }
   }
 
@@ -658,8 +755,14 @@ export class Game {
     });
     if (!collided) return;
 
+    this.crashPlayer();
+  }
+
+  private crashPlayer(): void {
+    if (this.mode === 'lost') return;
     this.mode = 'lost';
     this.hits = this.maxHits;
+    this.createExplosion(this.player.group.position, '#ff5f35');
     this.audio.stopPropeller();
     this.audio.crash();
   }
@@ -691,6 +794,7 @@ export class Game {
     this.player.reset();
     for (let index = this.shots.length - 1; index >= 0; index -= 1) this.removeShot(index);
     for (let index = this.playerShots.length - 1; index >= 0; index -= 1) this.removePlayerShot(index);
+    for (let index = this.explosions.length - 1; index >= 0; index -= 1) this.removeExplosion(index);
     this.fireCooldown = 0;
     for (const enemy of this.enemies) {
       enemy.active = true;

@@ -1,49 +1,49 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#111619" />
-    <title>Sky Ring Run</title>
+    <title>天空空战</title>
   </head>
   <body>
     <main id="app">
-      <canvas id="game-canvas" aria-label="Playable 3D driving game canvas"></canvas>
+      <canvas id="game-canvas" aria-label="可游玩的 3D 飞机空战画布"></canvas>
       <section id="start-screen">
-        <h1>Sky Combat</h1>
-        <p>Start locks the mouse like an FPS. Fly with the reticle, evade enemy fire, and repair before the airframe fails.</p>
-        <button id="start-button" type="button">Start</button>
+        <h1>天空空战</h1>
+        <p>点击开始后鼠标会像射击游戏一样锁定。移动圆圈操控飞机，用准心开火，寻找扳手维修。</p>
+        <button id="start-button" type="button">开始游戏</button>
       </section>
       <section id="hud" aria-live="polite">
         <div class="hud-metric">
-          <span>Hits</span>
+          <span>受击</span>
           <strong><span id="gate-value">0</span>/<span id="target-value">7</span></strong>
         </div>
         <div class="hud-metric">
-          <span>Clock</span>
+          <span>计时</span>
           <strong id="timer-value">00:00</strong>
         </div>
         <div class="hud-metric">
-          <span>Speed</span>
+          <span>速度</span>
           <strong><span id="speed-value">000</span> <small>kt</small></strong>
         </div>
         <div class="hud-metric">
-          <span>Altitude</span>
+          <span>高度</span>
           <strong><span id="altitude-value">000</span> <small>m</small></strong>
         </div>
         <div class="hud-metric damage-meter">
-          <span>Airframe</span>
+          <span>机体</span>
           <strong id="damage-value">0%</strong>
         </div>
         <div class="boost-meter" aria-hidden="true">
           <div id="boost-fill"></div>
         </div>
-        <div id="status-line">Evade enemy fire</div>
+        <div id="status-line">躲避敌机火力</div>
       </section>
-      <button id="pause-button" type="button" aria-label="Pause">Pause</button>
+      <button id="pause-button" type="button" aria-label="暂停">暂停</button>
       <section id="game-overlay" aria-live="assertive">
-        <h1 id="overlay-title">Paused</h1>
-        <p id="overlay-text">Press P or Esc to resume</p>
+        <h1 id="overlay-title">已暂停</h1>
+        <p id="overlay-text">按 P 或 Esc 继续</p>
       </section>
       <div id="reticle" aria-hidden="true">
         <span></span>
@@ -55,7 +55,7 @@
         <div id="touch-stick">
           <div id="touch-knob"></div>
         </div>
-        <button id="dash-button" type="button">Boost</button>
+        <button id="dash-button" type="button">加速</button>
       </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
