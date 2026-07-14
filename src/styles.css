@@ -1,0 +1,436 @@
+:root {
+  color: #f4f0df;
+  background: #111619;
+  font-family:
+    Avenir Next,
+    Avenir,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  min-width: 320px;
+}
+
+#app {
+  position: relative;
+  background: #111619;
+}
+
+#app.is-active {
+  cursor: none;
+}
+
+#game-canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  outline: none;
+  touch-action: none;
+}
+
+#start-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  padding: 28px;
+  color: #f4f0df;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(9, 14, 18, 0.58), rgba(9, 14, 18, 0.76));
+}
+
+#start-screen h1 {
+  margin: 0;
+  font-size: clamp(2.8rem, 8vw, 6rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+#start-screen p {
+  max-width: 520px;
+  margin: 0 auto;
+  color: rgba(244, 240, 223, 0.78);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+#start-button,
+#pause-button {
+  border: 1px solid rgba(244, 240, 223, 0.32);
+  color: #111619;
+  background: #48d6c5;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+#start-button {
+  justify-self: center;
+  min-width: 136px;
+  min-height: 48px;
+  padding: 0 22px;
+}
+
+#app.has-started #start-screen {
+  display: none;
+}
+
+#hud {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(112px, env(safe-area-inset-right));
+  left: max(14px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-columns: repeat(5, minmax(82px, 118px)) minmax(112px, 1fr) minmax(150px, auto);
+  gap: 8px;
+  align-items: start;
+  pointer-events: none;
+  color: #f4f0df;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.hud-metric,
+#status-line {
+  border: 1px solid rgba(244, 240, 223, 0.2);
+  background: linear-gradient(180deg, rgba(14, 21, 24, 0.86), rgba(14, 21, 24, 0.58));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+#pause-button {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 4;
+  min-width: 84px;
+  min-height: 42px;
+  pointer-events: auto;
+}
+
+#app:not(.has-started) #hud,
+#app:not(.has-started) #pause-button,
+#app:not(.is-active) #reticle,
+#app:not(.is-active) #weapon-crosshair {
+  display: none;
+}
+
+.hud-metric {
+  min-height: 58px;
+  padding: 8px 10px;
+  border-left: 3px solid #48d6c5;
+}
+
+.damage-meter {
+  border-left-color: #e23d2f;
+}
+
+.hud-metric span {
+  display: block;
+  color: rgba(244, 240, 223, 0.68);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.hud-metric strong {
+  display: block;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.12rem;
+  line-height: 1;
+}
+
+.hud-metric small {
+  color: rgba(244, 240, 223, 0.62);
+  font-size: 0.64rem;
+}
+
+.boost-meter {
+  align-self: stretch;
+  height: 14px;
+  margin-top: 38px;
+  border: 1px solid rgba(72, 214, 197, 0.36);
+  background: rgba(14, 21, 24, 0.72);
+  overflow: hidden;
+}
+
+#boost-fill {
+  width: 100%;
+  height: 100%;
+  transform: scaleX(1);
+  transform-origin: left center;
+  background: linear-gradient(90deg, #48d6c5, #f1d97a);
+  box-shadow: 0 0 18px rgba(72, 214, 197, 0.55);
+}
+
+#status-line {
+  min-height: 58px;
+  padding: 12px 13px;
+  border-left: 3px solid #f1d97a;
+  font-weight: 900;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+#game-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 22px;
+  color: #f4f0df;
+  text-align: center;
+  background: rgba(8, 12, 14, 0.46);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+#game-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#game-overlay h1 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 4.6rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+#game-overlay p {
+  margin: 0;
+  color: rgba(244, 240, 223, 0.78);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+#reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  --reticle-x: 0px;
+  --reticle-y: 0px;
+  width: 42px;
+  aspect-ratio: 1;
+  border: 2px solid rgba(244, 240, 223, 0.88);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(calc(-50% + var(--reticle-x)), calc(-50% + var(--reticle-y)));
+  box-shadow:
+    0 0 12px rgba(72, 214, 197, 0.42),
+    inset 0 0 12px rgba(72, 214, 197, 0.22);
+}
+
+#reticle::before,
+#reticle::after,
+#reticle span::before,
+#reticle span::after {
+  position: absolute;
+  content: "";
+  background: rgba(244, 240, 223, 0.88);
+}
+
+#reticle::before,
+#reticle::after {
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  transform: translateX(-50%);
+}
+
+#reticle::before {
+  top: -14px;
+}
+
+#reticle::after {
+  bottom: -14px;
+}
+
+#reticle span::before,
+#reticle span::after {
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+#reticle span::before {
+  left: -14px;
+}
+
+#reticle span::after {
+  right: -14px;
+}
+
+#weapon-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(241, 217, 122, 0.95);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 0 10px rgba(241, 217, 122, 0.46),
+    inset 0 0 8px rgba(241, 217, 122, 0.18);
+}
+
+#weapon-crosshair::before,
+#weapon-crosshair::after,
+#weapon-crosshair span::before,
+#weapon-crosshair span::after {
+  position: absolute;
+  content: "";
+  background: rgba(241, 217, 122, 0.95);
+}
+
+#weapon-crosshair::before,
+#weapon-crosshair::after {
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  transform: translateX(-50%);
+}
+
+#weapon-crosshair::before {
+  top: -11px;
+}
+
+#weapon-crosshair::after {
+  bottom: -11px;
+}
+
+#weapon-crosshair span::before,
+#weapon-crosshair span::after {
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+#weapon-crosshair span::before {
+  left: -11px;
+}
+
+#weapon-crosshair span::after {
+  right: -11px;
+}
+
+#touch-controls {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(18px, env(safe-area-inset-left));
+  display: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+#touch-stick {
+  position: relative;
+  width: clamp(104px, 24vw, 138px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(244, 240, 223, 0.28);
+  border-radius: 50%;
+  background: rgba(14, 21, 24, 0.58);
+  box-shadow: inset 0 0 22px rgba(72, 214, 197, 0.16);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#touch-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f1d97a;
+  box-shadow: 0 0 24px rgba(241, 217, 122, 0.42);
+  transform: translate(-50%, -50%);
+}
+
+#dash-button {
+  width: clamp(78px, 18vw, 102px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(244, 240, 223, 0.3);
+  border-radius: 50%;
+  color: #111619;
+  background: #48d6c5;
+  font-weight: 900;
+  text-transform: uppercase;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+@media (max-width: 900px) {
+  #hud {
+    grid-template-columns: repeat(3, minmax(78px, 1fr));
+  }
+
+  .boost-meter {
+    grid-column: 1 / 3;
+    margin-top: 0;
+  }
+
+  #status-line {
+    grid-column: 3 / 4;
+  }
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+  #hud {
+    right: max(10px, env(safe-area-inset-right));
+    left: max(10px, env(safe-area-inset-left));
+    grid-template-columns: repeat(2, minmax(84px, 1fr));
+    gap: 7px;
+  }
+
+  .hud-metric {
+    min-height: 50px;
+    padding: 7px 8px;
+  }
+
+  .hud-metric strong {
+    font-size: 0.98rem;
+  }
+
+  .boost-meter {
+    grid-column: 1 / 2;
+    height: 12px;
+  }
+
+  #status-line {
+    grid-column: 2 / 3;
+    min-height: 42px;
+    padding: 9px 10px;
+    font-size: 0.68rem;
+  }
+
+  #touch-controls {
+    display: flex;
+  }
+}

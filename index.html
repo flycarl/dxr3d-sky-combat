@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111619" />
+    <title>Sky Ring Run</title>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game-canvas" aria-label="Playable 3D driving game canvas"></canvas>
+      <section id="start-screen">
+        <h1>Sky Combat</h1>
+        <p>Start locks the mouse like an FPS. Fly with the reticle, evade enemy fire, and repair before the airframe fails.</p>
+        <button id="start-button" type="button">Start</button>
+      </section>
+      <section id="hud" aria-live="polite">
+        <div class="hud-metric">
+          <span>Hits</span>
+          <strong><span id="gate-value">0</span>/<span id="target-value">7</span></strong>
+        </div>
+        <div class="hud-metric">
+          <span>Clock</span>
+          <strong id="timer-value">00:00</strong>
+        </div>
+        <div class="hud-metric">
+          <span>Speed</span>
+          <strong><span id="speed-value">000</span> <small>kt</small></strong>
+        </div>
+        <div class="hud-metric">
+          <span>Altitude</span>
+          <strong><span id="altitude-value">000</span> <small>m</small></strong>
+        </div>
+        <div class="hud-metric damage-meter">
+          <span>Airframe</span>
+          <strong id="damage-value">0%</strong>
+        </div>
+        <div class="boost-meter" aria-hidden="true">
+          <div id="boost-fill"></div>
+        </div>
+        <div id="status-line">Evade enemy fire</div>
+      </section>
+      <button id="pause-button" type="button" aria-label="Pause">Pause</button>
+      <section id="game-overlay" aria-live="assertive">
+        <h1 id="overlay-title">Paused</h1>
+        <p id="overlay-text">Press P or Esc to resume</p>
+      </section>
+      <div id="reticle" aria-hidden="true">
+        <span></span>
+      </div>
+      <div id="weapon-crosshair" aria-hidden="true">
+        <span></span>
+      </div>
+      <div id="touch-controls" aria-hidden="true">
+        <div id="touch-stick">
+          <div id="touch-knob"></div>
+        </div>
+        <button id="dash-button" type="button">Boost</button>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
