@@ -158,6 +158,7 @@ export class Game {
       this.updateShots(delta);
       this.updateRepairs(elapsed);
       this.checkRepairPickups();
+      this.checkEnemyCrash();
       this.checkGroundCrash();
       this.audio.updatePropeller(speedRatio, this.input.isDashHeld());
     }
@@ -649,6 +650,18 @@ export class Game {
       this.audio.stopPropeller();
       this.audio.crash();
     }
+  }
+
+  private checkEnemyCrash(): void {
+    const collided = this.enemies.some((enemy) => {
+      return enemy.active && enemy.group.position.distanceToSquared(this.player.group.position) < 2.1 * 2.1;
+    });
+    if (!collided) return;
+
+    this.mode = 'lost';
+    this.hits = this.maxHits;
+    this.audio.stopPropeller();
+    this.audio.crash();
   }
 
   private getTerrainHeight(x: number, z: number): number {
