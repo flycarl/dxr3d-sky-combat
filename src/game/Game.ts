@@ -146,6 +146,7 @@ export class Game {
     if (this.input.consumeRestart() && this.mode !== 'menu') this.startGame();
     if (this.input.consumePause() && this.mode !== 'menu') this.togglePause();
 
+    const speedRatio = THREE.MathUtils.clamp(this.player.getSpeedKph() / 280, 0, 1);
     if (this.mode === 'playing') {
       this.elapsed += delta;
       this.fireCooldown = Math.max(0, this.fireCooldown - delta);
@@ -158,9 +159,9 @@ export class Game {
       this.updateRepairs(elapsed);
       this.checkRepairPickups();
       this.checkGroundCrash();
+      this.audio.updatePropeller(speedRatio, this.input.isDashHeld());
     }
 
-    const speedRatio = THREE.MathUtils.clamp(this.player.getSpeedKph() / 280, 0, 1);
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, 58 + speedRatio * 5, 1 - Math.exp(-delta * 3));
     this.camera.updateProjectionMatrix();
     this.cameraRig.update(delta, this.player.group.position, this.player.group.rotation.y, this.tuning.cameraLag, speedRatio);
@@ -173,6 +174,9 @@ export class Game {
     this.resetMission();
     this.mode = 'playing';
     this.input.setEnabled(true);
+    void this.audio.unlock().then(() => {
+      if (this.mode === 'playing') this.audio.startPropeller();
+    });
     this.requestPointerLock();
     this.syncShellState();
   };
@@ -181,10 +185,14 @@ export class Game {
     if (this.mode === 'playing') {
       this.mode = 'paused';
       this.input.setEnabled(false);
+      this.audio.stopPropeller();
       this.releasePointerLock();
     } else if (this.mode === 'paused') {
       this.mode = 'playing';
       this.input.setEnabled(true);
+      void this.audio.unlock().then(() => {
+        if (this.mode === 'playing') this.audio.startPropeller();
+      });
       this.requestPointerLock();
     }
     this.syncShellState();
@@ -201,6 +209,7 @@ export class Game {
     this.input.setEnabled(false);
     if (this.mode === 'playing' && !this.pointerLockReleaseExpected) {
       this.mode = 'paused';
+      this.audio.stopPropeller();
     }
     this.pointerLockReleaseExpected = false;
     this.syncShellState();
@@ -527,6 +536,7 @@ export class Game {
       velocity: forward.multiplyScalar(bulletSpeed),
       age: 0,
     });
+    this.audio.shoot();
     this.fireCooldown = 0.13;
   }
 
@@ -636,6 +646,7 @@ export class Game {
     if (this.player.group.position.y <= ground + 0.9) {
       this.mode = 'lost';
       this.hits = this.maxHits;
+      this.audio.stopPropeller();
       this.audio.crash();
     }
   }
