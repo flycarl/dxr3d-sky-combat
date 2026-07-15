@@ -177,3 +177,22 @@ test('starts with an in-memory profile when localStorage writes fail', async ({ 
   await page.locator('#start-button').click();
   await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
 });
+
+test('starts when accessing localStorage throws', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get: () => {
+        throw new DOMException('Access is denied', 'SecurityError');
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('#start-screen')).toBeVisible();
+  await expect(page.locator('#coin-balance')).toHaveText('0');
+  expect(pageErrors).toEqual([]);
+});

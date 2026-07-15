@@ -49,9 +49,9 @@ function normalizeProfile(value: unknown): PlayerProfile {
   };
 }
 
-export function loadProfile(storage: Storage = window.localStorage): PlayerProfile {
+export function loadProfile(storage?: Storage): PlayerProfile {
   try {
-    const raw = storage.getItem(PROFILE_STORAGE_KEY);
+    const raw = (storage ?? window.localStorage).getItem(PROFILE_STORAGE_KEY);
     if (!raw) return cloneProfile(DEFAULT_PROFILE);
     return normalizeProfile(JSON.parse(raw));
   } catch {
@@ -59,9 +59,9 @@ export function loadProfile(storage: Storage = window.localStorage): PlayerProfi
   }
 }
 
-export function saveProfile(profile: PlayerProfile, storage: Storage = window.localStorage): void {
+export function saveProfile(profile: PlayerProfile, storage?: Storage): void {
   try {
-    storage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloneProfile(profile)));
+    (storage ?? window.localStorage).setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloneProfile(profile)));
   } catch {
     // Continue with the in-memory profile when browser storage is unavailable.
   }
