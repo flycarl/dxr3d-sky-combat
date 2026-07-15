@@ -74,7 +74,9 @@ body {
 }
 
 #start-button,
-#pause-button {
+#pause-button,
+#retry-button,
+#menu-button {
   border: 1px solid rgba(244, 240, 223, 0.32);
   color: #111619;
   background: #48d6c5;
@@ -222,6 +224,30 @@ body {
   color: rgba(244, 240, 223, 0.78);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+#overlay-actions {
+  display: none;
+  grid-template-columns: repeat(2, minmax(104px, 136px));
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+#game-overlay.is-lost #overlay-actions {
+  display: grid;
+}
+
+#retry-button,
+#menu-button {
+  min-height: 46px;
+  padding: 0 18px;
+  pointer-events: auto;
+}
+
+#menu-button {
+  color: #f4f0df;
+  background: rgba(14, 21, 24, 0.86);
 }
 
 #reticle {

@@ -101,6 +101,8 @@ export class Game {
   private readonly app = this.getElement('#app');
   private readonly startButton = this.getElement('#start-button') as HTMLButtonElement;
   private readonly pauseButton = this.getElement('#pause-button') as HTMLButtonElement;
+  private readonly retryButton = this.getElement('#retry-button') as HTMLButtonElement;
+  private readonly menuButton = this.getElement('#menu-button') as HTMLButtonElement;
   private pointerLockReleaseExpected = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -124,6 +126,8 @@ export class Game {
     this.input.setEnabled(false);
     this.startButton.addEventListener('click', this.startGame);
     this.pauseButton.addEventListener('click', this.togglePause);
+    this.retryButton.addEventListener('click', this.startGame);
+    this.menuButton.addEventListener('click', this.returnToMenu);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
     resizeRenderer(this.renderer, this.camera, this.tuning.maxDpr);
     this.publishDiagnostics();
@@ -138,6 +142,8 @@ export class Game {
     this.input.dispose();
     this.startButton.removeEventListener('click', this.startGame);
     this.pauseButton.removeEventListener('click', this.togglePause);
+    this.retryButton.removeEventListener('click', this.startGame);
+    this.menuButton.removeEventListener('click', this.returnToMenu);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     this.releasePointerLock();
     this.audio.dispose();
@@ -152,7 +158,6 @@ export class Game {
     this.frame += 1;
     resizeRenderer(this.renderer, this.camera, this.tuning.maxDpr);
 
-    if (this.input.consumeRestart() && this.mode !== 'menu') this.startGame();
     if (this.input.consumePause() && this.mode !== 'menu') this.togglePause();
 
     const speedRatio = THREE.MathUtils.clamp(this.player.getSpeedKph() / 280, 0, 1);
@@ -206,6 +211,15 @@ export class Game {
       });
       this.requestPointerLock();
     }
+    this.syncShellState();
+  };
+
+  private readonly returnToMenu = (): void => {
+    this.resetMission();
+    this.mode = 'menu';
+    this.input.setEnabled(false);
+    this.audio.stopPropeller();
+    this.releasePointerLock();
     this.syncShellState();
   };
 
@@ -764,6 +778,8 @@ export class Game {
     this.hits = this.maxHits;
     this.createExplosion(this.player.group.position, '#ff5f35');
     this.player.group.visible = false;
+    this.input.setEnabled(false);
+    this.releasePointerLock();
     this.audio.stopPropeller();
     this.audio.crash();
   }

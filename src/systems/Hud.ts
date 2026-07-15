@@ -39,12 +39,15 @@ export class Hud {
       this.hideOverlay();
     } else if (state.mode === 'won') {
       this.statusLine.textContent = '航线已清空';
-      this.showOverlay('任务完成', '按 R 或 Enter 再飞一次');
+      this.overlay.classList.remove('is-lost');
+      this.showOverlay('任务完成', '返回主菜单后可再来一局');
     } else if (state.mode === 'lost') {
       this.statusLine.textContent = '飞机坠毁';
-      this.showOverlay('坠机', '按 R 或 Enter 重新开始');
+      this.showOverlay('坠机', '选择下一步');
+      this.overlay.classList.add('is-lost');
     } else if (state.mode === 'paused') {
       this.statusLine.textContent = '已暂停';
+      this.overlay.classList.remove('is-lost');
       this.showOverlay('已暂停', '按 P 或 Esc 继续');
     } else {
       this.statusLine.textContent = state.gates > 0 ? '寻找扳手维修' : '躲避敌机火力';
@@ -81,6 +84,7 @@ export class Hud {
   }
 
   private hideOverlay(): void {
+    this.overlay.classList.remove('is-lost');
     this.overlay.classList.remove('is-visible');
   }
 

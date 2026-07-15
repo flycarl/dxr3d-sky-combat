@@ -23,7 +23,6 @@ export class InputController {
 
   private dashDown = false;
   private fireDown = false;
-  private restartPressed = false;
   private pausePressed = false;
   private usingTouchStick = false;
   private enabled = false;
@@ -33,9 +32,6 @@ export class InputController {
     this.keys.add(event.code);
     if (event.code === 'Space' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
       this.dashDown = true;
-    }
-    if (event.code === 'KeyR' || event.code === 'Enter') {
-      this.restartPressed = true;
     }
     if (event.code === 'KeyP' || event.code === 'Escape') {
       this.pausePressed = true;
@@ -187,12 +183,6 @@ export class InputController {
       this.updateKnob();
       this.updateReticle();
     }
-  }
-
-  consumeRestart(): boolean {
-    const pressed = this.restartPressed;
-    this.restartPressed = false;
-    return pressed;
   }
 
   consumePause(): boolean {
