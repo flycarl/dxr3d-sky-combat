@@ -763,6 +763,7 @@ export class Game {
     this.mode = 'lost';
     this.hits = this.maxHits;
     this.createExplosion(this.player.group.position, '#ff5f35');
+    this.player.group.visible = false;
     this.audio.stopPropeller();
     this.audio.crash();
   }
@@ -792,6 +793,7 @@ export class Game {
     this.hits = 0;
     this.mode = 'playing';
     this.player.reset();
+    this.player.group.visible = true;
     for (let index = this.shots.length - 1; index >= 0; index -= 1) this.removeShot(index);
     for (let index = this.playerShots.length - 1; index >= 0; index -= 1) this.removePlayerShot(index);
     for (let index = this.explosions.length - 1; index >= 0; index -= 1) this.removeExplosion(index);
