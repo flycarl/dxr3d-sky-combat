@@ -5,8 +5,10 @@ export class Hud {
   private readonly speedValue = this.getElement('#speed-value');
   private readonly altitudeValue = this.getElement('#altitude-value');
   private readonly damageValue = this.getElement('#damage-value');
+  private readonly hudCoinValue = this.getElement('#hud-coin-value');
   private readonly boostFill = this.getElement('#boost-fill');
   private readonly statusLine = this.getElement('#status-line');
+  private readonly rewardFlash = this.getElement('#reward-flash');
   private readonly overlay = this.getElement('#game-overlay');
   private readonly overlayTitle = this.getElement('#overlay-title');
   private readonly overlayText = this.getElement('#overlay-text');
@@ -14,6 +16,23 @@ export class Hud {
 
   setTarget(target: number): void {
     this.targetValue.textContent = String(target);
+  }
+
+  setCoins(coins: number): void {
+    this.hudCoinValue.textContent = String(coins);
+  }
+
+  flashReward(text: string): void {
+    this.rewardFlash.textContent = text;
+    this.rewardFlash.animate(
+      [
+        { opacity: 0, transform: 'translateY(4px)' },
+        { opacity: 1, transform: 'translateY(0)' },
+        { opacity: 1, transform: 'translateY(0)' },
+        { opacity: 0, transform: 'translateY(-4px)' },
+      ],
+      { duration: 850, easing: 'ease-out' },
+    );
   }
 
   update(state: {

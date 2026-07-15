@@ -12,7 +12,18 @@
       <section id="start-screen">
         <h1>天空空战</h1>
         <p>点击开始后鼠标会像射击游戏一样锁定。移动圆圈操控飞机，用准心开火，寻找扳手维修。</p>
-        <button id="start-button" type="button">开始游戏</button>
+        <div id="menu-panel">
+          <div id="coin-card">
+            <span>金币</span>
+            <strong id="coin-balance">0</strong>
+          </div>
+          <button id="start-button" type="button">开始单人</button>
+          <section id="customization-shop" aria-label="飞机改装">
+            <h2>飞机改装</h2>
+            <p id="shop-message">选择零件和颜色，每次改装都会消耗金币。</p>
+            <div id="customization-grid"></div>
+          </section>
+        </div>
       </section>
       <section id="hud" aria-live="polite">
         <div class="hud-metric">
@@ -35,10 +46,15 @@
           <span>机体</span>
           <strong id="damage-value">0%</strong>
         </div>
+        <div class="hud-metric coin-meter">
+          <span>金币</span>
+          <strong id="hud-coin-value">0</strong>
+        </div>
         <div class="boost-meter" aria-hidden="true">
           <div id="boost-fill"></div>
         </div>
         <div id="status-line">躲避敌机火力</div>
+        <div id="reward-flash" aria-live="polite"></div>
       </section>
       <button id="pause-button" type="button" aria-label="暂停">暂停</button>
       <section id="game-overlay" aria-live="assertive">
