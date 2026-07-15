@@ -23,8 +23,6 @@ import {
 } from '../systems/ProfileStore';
 import { disposeObject3D } from '../utils/dispose';
 
-void COIN_REWARDS;
-
 const ARENA: ArenaBounds = {
   halfWidth: 54,
   halfDepth: 74,
@@ -66,6 +64,12 @@ type RepairPickup = {
   phase: number;
 };
 
+type CoinPickup = {
+  group: THREE.Group;
+  active: boolean;
+  phase: number;
+};
+
 type ExplosionParticle = {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   velocity: THREE.Vector3;
@@ -85,6 +89,7 @@ export class Game {
   private readonly shots: EnemyShot[] = [];
   private readonly playerShots: PlayerShot[] = [];
   private readonly repairs: RepairPickup[] = [];
+  private readonly coins: CoinPickup[] = [];
   private readonly explosions: ExplosionParticle[] = [];
   private readonly audio = new AudioSystem();
   private readonly hud = new Hud();
@@ -151,7 +156,6 @@ export class Game {
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
     this.renderCustomizationShop();
     this.applyProfile();
-    void this.addCoins;
     resizeRenderer(this.renderer, this.camera, this.tuning.maxDpr);
     this.publishDiagnostics();
   }
@@ -195,6 +199,8 @@ export class Game {
       this.updateShots(delta);
       this.updateRepairs(elapsed);
       this.checkRepairPickups();
+      this.updateCoins(elapsed);
+      this.checkCoinPickups();
       this.checkEnemyCrash();
       this.checkGroundCrash();
       this.audio.updatePropeller(speedRatio, this.input.isDashHeld());
@@ -393,6 +399,7 @@ export class Game {
     this.world.add(this.player.group);
     this.createEnemies();
     this.createRepairPickups();
+    this.createCoinPickups();
   }
 
   private createMountainTerrain(): THREE.Group {
@@ -612,6 +619,54 @@ export class Game {
     return group;
   }
 
+  private createCoinPickups(): void {
+    const positions = [
+      [-18, 9, -18],
+      [18, 11, -42],
+      [36, 8, 28],
+      [-38, 12, 42],
+      [4, 14, 8],
+    ];
+    positions.forEach(([x, y, z], index) => {
+      const group = this.createCoinModel();
+      group.position.set(x, y, z);
+      this.world.add(group);
+      this.coins.push({ group, active: true, phase: index * 0.9 });
+    });
+  }
+
+  private createCoinModel(): THREE.Group {
+    const group = new THREE.Group();
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.72, 0.045, 8, 34),
+      new THREE.MeshBasicMaterial({ color: '#fff2a8' }),
+    );
+    group.add(ring);
+
+    const coin = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.42, 0.42, 0.08, 32),
+      new THREE.MeshStandardMaterial({
+        color: '#f1d97a',
+        roughness: 0.24,
+        metalness: 0.72,
+        emissive: '#6a4f08',
+        emissiveIntensity: 0.22,
+      }),
+    );
+    coin.rotation.x = Math.PI / 2;
+    coin.castShadow = true;
+    group.add(coin);
+
+    const mark = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.5, 0.04),
+      new THREE.MeshBasicMaterial({ color: '#fff6c8' }),
+    );
+    mark.position.z = 0.06;
+    group.add(mark);
+
+    return group;
+  }
+
   private updateEnemies(delta: number): void {
     for (const enemy of this.enemies) {
       if (!enemy.active) {
@@ -713,6 +768,7 @@ export class Game {
       if (enemy) {
         this.createExplosion(enemy.group.position, '#ff8a35');
         this.hud.flashTargetHit();
+        this.addCoins(COIN_REWARDS.aiKill, '击落');
         enemy.active = false;
         enemy.group.visible = false;
         enemy.respawnTimer = 4.5;
@@ -834,6 +890,49 @@ export class Game {
     });
   }
 
+  private updateCoins(elapsed: number): void {
+    this.coins.forEach((coin) => {
+      if (!coin.active) return;
+      coin.group.rotation.y += 0.036;
+      coin.group.position.y += Math.sin(elapsed * 2.8 + coin.phase) * 0.0045;
+    });
+  }
+
+  private checkCoinPickups(): void {
+    this.coins.forEach((coin) => {
+      if (!coin.active) return;
+      if (coin.group.position.distanceToSquared(this.player.group.position) < 1.65 * 1.65) {
+        this.addCoins(COIN_REWARDS.pickup, '拾取');
+        this.audio.pickup(1);
+        this.respawnCoinFarAway(coin);
+      }
+    });
+  }
+
+  private respawnCoinFarAway(coin: CoinPickup): void {
+    const playerPosition = this.player.group.position;
+    let best = new THREE.Vector3(0, 10, 0);
+    let bestDistance = -1;
+
+    for (let attempt = 0; attempt < 18; attempt += 1) {
+      const x = THREE.MathUtils.randFloatSpread(ARENA.halfWidth * 1.75);
+      const z = THREE.MathUtils.randFloatSpread(ARENA.halfDepth * 1.75);
+      const terrain = this.getTerrainHeight(x, z);
+      const y = THREE.MathUtils.randFloat(Math.max(terrain + 4.5, 6.5), ARENA.maxAltitude - 1.2);
+      const candidate = new THREE.Vector3(x, y, z);
+      const distance = candidate.distanceTo(playerPosition);
+      if (distance > bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+      if (distance > 34) break;
+    }
+
+    coin.group.position.copy(best);
+    coin.group.visible = true;
+    coin.active = true;
+  }
+
   private respawnRepairFarAway(repair: RepairPickup): void {
     const playerPosition = this.player.group.position;
     let best = new THREE.Vector3(0, 9, 0);
@@ -926,6 +1025,10 @@ export class Game {
       repair.active = true;
       repair.group.visible = true;
     }
+    for (const coin of this.coins) {
+      coin.active = true;
+      coin.group.visible = true;
+    }
     this.cameraRig.snapTo(this.player.group.position);
   }
 
@@ -955,6 +1058,7 @@ export class Game {
       timeLeft: this.elapsed,
       damage: Math.round((this.hits / this.maxHits) * 100),
       playerShots: this.playerShots.length,
+      coinPickups: this.coins.filter((coin) => coin.active).length,
       player: {
         position: {
           x: this.player.group.position.x,

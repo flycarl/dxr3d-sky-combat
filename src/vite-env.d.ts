@@ -11,6 +11,7 @@ interface ThreeGameDiagnostics {
   timeLeft: number;
   damage: number;
   playerShots?: number;
+  coinPickups?: number;
   player: {
     position: { x: number; y: number; z: number };
     speed: number;
