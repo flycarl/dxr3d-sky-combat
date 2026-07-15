@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { InputController } from '../core/InputController';
+import { applyStyleToMaterial, type AircraftCustomization } from '../systems/Customization';
 
 export type PlayerTuning = {
   maxSpeed: number;
@@ -34,13 +35,15 @@ export class Player {
     roughness: 0.34,
     metalness: 0.22,
   });
-  private readonly wingMaterial = new THREE.MeshStandardMaterial({
+  private readonly leftWingMaterial = new THREE.MeshStandardMaterial({
     color: '#48d6c5',
     roughness: 0.28,
     metalness: 0.26,
     emissive: '#0d4f49',
     emissiveIntensity: 0.32,
   });
+  private readonly rightWingMaterial = this.leftWingMaterial.clone();
+  private readonly tailMaterial = this.leftWingMaterial.clone();
   private readonly glassMaterial = new THREE.MeshStandardMaterial({
     color: '#122c39',
     roughness: 0.14,
@@ -48,7 +51,7 @@ export class Player {
     emissive: '#143847',
     emissiveIntensity: 0.24,
   });
-  private readonly darkMaterial = new THREE.MeshStandardMaterial({
+  private readonly propellerMaterial = new THREE.MeshStandardMaterial({
     color: '#17191b',
     roughness: 0.58,
     metalness: 0.18,
@@ -76,18 +79,26 @@ export class Player {
     nose.castShadow = true;
     this.group.add(nose);
 
-    const wing = new THREE.Mesh(this.wingGeometry, this.wingMaterial);
-    wing.position.set(0, -0.02, -0.18);
-    wing.castShadow = true;
-    wing.receiveShadow = true;
-    this.group.add(wing);
+    const leftWing = new THREE.Mesh(this.wingGeometry, this.leftWingMaterial);
+    leftWing.position.set(-0.82, -0.02, -0.18);
+    leftWing.scale.x = 0.5;
+    leftWing.castShadow = true;
+    leftWing.receiveShadow = true;
+    this.group.add(leftWing);
 
-    const tail = new THREE.Mesh(this.tailWingGeometry, this.wingMaterial);
+    const rightWing = new THREE.Mesh(this.wingGeometry, this.rightWingMaterial);
+    rightWing.position.set(0.82, -0.02, -0.18);
+    rightWing.scale.x = 0.5;
+    rightWing.castShadow = true;
+    rightWing.receiveShadow = true;
+    this.group.add(rightWing);
+
+    const tail = new THREE.Mesh(this.tailWingGeometry, this.tailMaterial);
     tail.position.set(0, 0.08, 1.12);
     tail.castShadow = true;
     this.group.add(tail);
 
-    const fin = new THREE.Mesh(this.finGeometry, this.wingMaterial);
+    const fin = new THREE.Mesh(this.finGeometry, this.tailMaterial);
     fin.position.set(0, 0.42, 1.08);
     fin.castShadow = true;
     this.group.add(fin);
@@ -98,10 +109,10 @@ export class Player {
     canopy.castShadow = true;
     this.group.add(canopy);
 
-    const bladeA = new THREE.Mesh(this.propellerGeometry, this.darkMaterial);
-    const bladeB = new THREE.Mesh(this.propellerGeometry, this.darkMaterial);
+    const bladeA = new THREE.Mesh(this.propellerGeometry, this.propellerMaterial);
+    const bladeB = new THREE.Mesh(this.propellerGeometry, this.propellerMaterial);
     bladeB.rotation.z = Math.PI / 2;
-    const hub = new THREE.Mesh(this.propellerHubGeometry, this.darkMaterial);
+    const hub = new THREE.Mesh(this.propellerHubGeometry, this.propellerMaterial);
     this.propeller.position.z = -1.98;
     this.propeller.add(bladeA, bladeB, hub);
     this.group.add(this.propeller);
@@ -158,6 +169,14 @@ export class Player {
     this.propeller.rotation.z = this.propellerSpin;
   }
 
+  applyCustomization(customization: AircraftCustomization): void {
+    applyStyleToMaterial(this.bodyMaterial, customization.body);
+    applyStyleToMaterial(this.leftWingMaterial, customization.leftWing);
+    applyStyleToMaterial(this.rightWingMaterial, customization.rightWing);
+    applyStyleToMaterial(this.propellerMaterial, customization.propeller);
+    applyStyleToMaterial(this.tailMaterial, customization.leftWing);
+  }
+
   applyImpact(retain = 0.5): void {
     this.speed = Math.max(5, this.speed * retain);
     this.hitFlash = 1;
@@ -198,8 +217,10 @@ export class Player {
     this.propellerGeometry.dispose();
     this.propellerHubGeometry.dispose();
     this.bodyMaterial.dispose();
-    this.wingMaterial.dispose();
+    this.leftWingMaterial.dispose();
+    this.rightWingMaterial.dispose();
+    this.tailMaterial.dispose();
     this.glassMaterial.dispose();
-    this.darkMaterial.dispose();
+    this.propellerMaterial.dispose();
   }
 }
