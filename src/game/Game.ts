@@ -5,9 +5,25 @@ import { createRenderer, resizeRenderer } from '../core/Renderer';
 import { Player, type ArenaBounds } from '../entities/Player';
 import { AudioSystem } from '../systems/AudioSystem';
 import { CameraRig } from '../systems/CameraRig';
+import {
+  AIRCRAFT_PART_LABELS,
+  AIRCRAFT_STYLES,
+  type AircraftPartId,
+  type AircraftStyleId,
+} from '../systems/Customization';
 import { DebugTools, type DebugTuning } from '../systems/DebugTools';
 import { Hud } from '../systems/Hud';
+import {
+  COIN_REWARDS,
+  awardCoins,
+  loadProfile,
+  saveProfile,
+  spendForCustomization,
+  type PlayerProfile,
+} from '../systems/ProfileStore';
 import { disposeObject3D } from '../utils/dispose';
+
+void COIN_REWARDS;
 
 const ARENA: ArenaBounds = {
   halfWidth: 54,
@@ -103,6 +119,10 @@ export class Game {
   private readonly pauseButton = this.getElement('#pause-button') as HTMLButtonElement;
   private readonly retryButton = this.getElement('#retry-button') as HTMLButtonElement;
   private readonly menuButton = this.getElement('#menu-button') as HTMLButtonElement;
+  private readonly coinBalance = this.getElement('#coin-balance');
+  private readonly shopMessage = this.getElement('#shop-message');
+  private readonly customizationGrid = this.getElement('#customization-grid');
+  private profile: PlayerProfile = loadProfile();
   private pointerLockReleaseExpected = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -129,6 +149,9 @@ export class Game {
     this.retryButton.addEventListener('click', this.startGame);
     this.menuButton.addEventListener('click', this.returnToMenu);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    this.renderCustomizationShop();
+    this.applyProfile();
+    void this.addCoins;
     resizeRenderer(this.renderer, this.camera, this.tuning.maxDpr);
     this.publishDiagnostics();
   }
@@ -261,6 +284,78 @@ export class Game {
     this.app.classList.toggle('has-started', this.mode !== 'menu');
     this.app.classList.toggle('is-active', this.mode === 'playing');
     this.app.classList.toggle('is-paused', this.mode === 'paused');
+  }
+
+  private applyProfile(): void {
+    this.player.applyCustomization(this.profile.customization);
+    this.coinBalance.textContent = String(this.profile.coins);
+    this.hud.setCoins(this.profile.coins);
+    saveProfile(this.profile);
+  }
+
+  private addCoins(amount: number, label: string): void {
+    this.profile = awardCoins(this.profile, amount);
+    this.applyProfile();
+    this.hud.flashReward(`+${amount} 金币 ${label}`);
+  }
+
+  private renderCustomizationShop(): void {
+    this.customizationGrid.innerHTML = '';
+    for (const part of Object.keys(AIRCRAFT_PART_LABELS) as AircraftPartId[]) {
+      const section = document.createElement('section');
+      section.className = 'shop-part';
+      const title = document.createElement('h3');
+      title.textContent = AIRCRAFT_PART_LABELS[part];
+      section.append(title);
+
+      for (const style of Object.values(AIRCRAFT_STYLES)) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'style-button';
+        button.dataset.part = part;
+        button.dataset.style = style.id;
+        button.innerHTML = `<span class="style-swatch"></span><span>${style.label}</span><span class="style-cost">${style.cost}</span>`;
+        const swatch = button.querySelector<HTMLElement>('.style-swatch');
+        if (swatch) swatch.style.background = style.color;
+        button.addEventListener('click', () => this.buyCustomization(part, style.id));
+        section.append(button);
+      }
+
+      this.customizationGrid.append(section);
+    }
+    this.syncCustomizationButtons();
+  }
+
+  private syncCustomizationButtons(): void {
+    const buttons = this.customizationGrid.querySelectorAll<HTMLButtonElement>('.style-button[data-part][data-style]');
+    buttons.forEach((button) => {
+      const part = button.dataset.part as AircraftPartId;
+      const style = button.dataset.style as AircraftStyleId;
+      const selected = this.profile.customization[part] === style;
+      button.classList.toggle('is-selected', selected);
+      const cost = AIRCRAFT_STYLES[style].cost;
+      button.disabled = cost > this.profile.coins && !selected;
+    });
+  }
+
+  private buyCustomization(part: AircraftPartId, style: AircraftStyleId): void {
+    const result = spendForCustomization(this.profile, part, style);
+    if (!result.ok) {
+      this.shopMessage.textContent = result.reason === 'insufficient-coins' ? '金币不足' : '无法应用这个改装';
+      this.shopMessage.animate(
+        [
+          { transform: 'translateX(0)', color: 'rgba(244, 240, 223, 0.74)' },
+          { transform: 'translateX(4px)', color: '#e23d2f' },
+          { transform: 'translateX(0)', color: 'rgba(244, 240, 223, 0.74)' },
+        ],
+        { duration: 240, easing: 'ease-out' },
+      );
+      return;
+    }
+    this.profile = result.profile;
+    this.shopMessage.textContent = `${AIRCRAFT_PART_LABELS[part]} 已改装为 ${AIRCRAFT_STYLES[style].label}`;
+    this.applyProfile();
+    this.syncCustomizationButtons();
   }
 
   private render(): void {
@@ -810,6 +905,7 @@ export class Game {
     this.hits = 0;
     this.mode = 'playing';
     this.player.reset();
+    this.player.applyCustomization(this.profile.customization);
     this.player.group.visible = true;
     for (let index = this.shots.length - 1; index >= 0; index -= 1) this.removeShot(index);
     for (let index = this.playerShots.length - 1; index >= 0; index -= 1) this.removePlayerShot(index);
@@ -846,6 +942,7 @@ export class Game {
       frame: this.frame,
       elapsed: this.elapsed,
       score: this.hits,
+      coins: this.profile.coins,
       targetScore: this.maxHits,
       complete: false,
       mode: this.mode,

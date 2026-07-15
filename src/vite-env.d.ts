@@ -4,6 +4,7 @@ interface ThreeGameDiagnostics {
   frame: number;
   elapsed: number;
   score: number;
+  coins: number;
   targetScore: number;
   complete: boolean;
   mode: 'menu' | 'playing' | 'paused' | 'won' | 'lost';
