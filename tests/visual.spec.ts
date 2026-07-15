@@ -125,3 +125,55 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
   expect(consoleErrors).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
+
+test('customization reports insufficient funds and persists one paid selection', async ({ page }) => {
+  await page.goto('/');
+
+  const tealBody = page.locator('.style-button[data-part="body"][data-style="teal"]');
+  await expect(tealBody).toBeEnabled();
+  await tealBody.click();
+  await expect(page.locator('#shop-message')).toHaveText('金币不足');
+  await expect(page.locator('#coin-balance')).toHaveText('0');
+
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'dxr3d-player-profile-v1',
+      JSON.stringify({
+        coins: 500,
+        customization: {
+          body: 'red',
+          leftWing: 'standard',
+          rightWing: 'standard',
+          propeller: 'stealth',
+        },
+      }),
+    );
+  });
+  await page.reload();
+
+  await tealBody.click();
+  await expect(page.locator('#coin-balance')).toHaveText('240');
+  await tealBody.click();
+  await expect(page.locator('#coin-balance')).toHaveText('240');
+  await expect(page.locator('#shop-message')).toContainText('已是当前改装');
+
+  await page.reload();
+  await expect(page.locator('#coin-balance')).toHaveText('240');
+  await expect(tealBody).toHaveClass(/is-selected/);
+});
+
+test('starts with an in-memory profile when localStorage writes fail', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Storage.prototype, 'setItem', {
+      configurable: true,
+      value: () => {
+        throw new DOMException('Storage is full', 'QuotaExceededError');
+      },
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('#coin-balance')).toHaveText('0');
+  await page.locator('#start-button').click();
+  await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
+});

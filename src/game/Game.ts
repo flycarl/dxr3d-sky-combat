@@ -340,8 +340,6 @@ export class Game {
       const style = button.dataset.style as AircraftStyleId;
       const selected = this.profile.customization[part] === style;
       button.classList.toggle('is-selected', selected);
-      const cost = AIRCRAFT_STYLES[style].cost;
-      button.disabled = cost > this.profile.coins && !selected;
     });
   }
 

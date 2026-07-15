@@ -35,6 +35,9 @@ export class Player {
     roughness: 0.34,
     metalness: 0.22,
   });
+  private readonly bodyBaseEmissive = this.bodyMaterial.emissive.clone();
+  private bodyBaseEmissiveIntensity = this.bodyMaterial.emissiveIntensity;
+  private readonly impactEmissive = new THREE.Color('#5b120c');
   private readonly leftWingMaterial = new THREE.MeshStandardMaterial({
     color: '#48d6c5',
     roughness: 0.28,
@@ -156,8 +159,7 @@ export class Player {
 
     this.boostEnergy = THREE.MathUtils.clamp(this.boostEnergy + (boostHeld ? -0.3 : 0.14) * delta, 0, 1);
     this.hitFlash = Math.max(0, this.hitFlash - delta * 4);
-    this.bodyMaterial.emissive.set(this.hitFlash > 0 ? '#5b120c' : '#000000');
-    this.bodyMaterial.emissiveIntensity = this.hitFlash > 0 ? this.hitFlash : 0;
+    this.updateBodyEmissive();
 
     const bank = -steering * Math.min(speedRatio, 1.15) * 1.18;
     const pitch = THREE.MathUtils.clamp(throttle * 0.46, -0.42, 0.5);
@@ -171,6 +173,9 @@ export class Player {
 
   applyCustomization(customization: AircraftCustomization): void {
     applyStyleToMaterial(this.bodyMaterial, customization.body);
+    this.bodyBaseEmissive.copy(this.bodyMaterial.emissive);
+    this.bodyBaseEmissiveIntensity = this.bodyMaterial.emissiveIntensity;
+    this.updateBodyEmissive();
     applyStyleToMaterial(this.leftWingMaterial, customization.leftWing);
     applyStyleToMaterial(this.rightWingMaterial, customization.rightWing);
     applyStyleToMaterial(this.propellerMaterial, customization.propeller);
@@ -189,6 +194,7 @@ export class Player {
     this.velocity.set(0, 0, -this.speed);
     this.boostEnergy = 1;
     this.hitFlash = 0;
+    this.updateBodyEmissive();
   }
 
   addBoost(amount: number): void {
@@ -205,6 +211,11 @@ export class Player {
 
   getBoostEnergy(): number {
     return this.boostEnergy;
+  }
+
+  private updateBodyEmissive(): void {
+    this.bodyMaterial.emissive.copy(this.bodyBaseEmissive).lerp(this.impactEmissive, this.hitFlash);
+    this.bodyMaterial.emissiveIntensity = THREE.MathUtils.lerp(this.bodyBaseEmissiveIntensity, 1, this.hitFlash);
   }
 
   dispose(): void {

@@ -60,7 +60,11 @@ export function loadProfile(storage: Storage = window.localStorage): PlayerProfi
 }
 
 export function saveProfile(profile: PlayerProfile, storage: Storage = window.localStorage): void {
-  storage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloneProfile(profile)));
+  try {
+    storage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloneProfile(profile)));
+  } catch {
+    // Continue with the in-memory profile when browser storage is unavailable.
+  }
 }
 
 export function awardCoins(profile: PlayerProfile, amount: number): PlayerProfile {
