@@ -53,9 +53,41 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
   await page.goto('/');
+  await expect(page.locator('#coin-balance')).toBeVisible();
+  await expect(page.locator('#customization-shop')).toBeVisible();
+  await expect(page.locator('#customization-grid .style-button')).toHaveCount(20);
+  await expect(page.locator('#shop-message')).toContainText('金币');
+
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'dxr3d-player-profile-v1',
+      JSON.stringify({
+        coins: 500,
+        customization: {
+          body: 'gold',
+          leftWing: 'red',
+          rightWing: 'teal',
+          propeller: 'stealth',
+        },
+      }),
+    );
+  });
+  await page.reload();
+  await expect(page.locator('#coin-balance')).toHaveText('500');
+
+  await page.locator('.style-button[data-part="body"][data-style="teal"]').click();
+  await expect(page.locator('#coin-balance')).toHaveText('240');
+  await expect(page.locator('#shop-message')).toContainText('机身 已改装为 青色辉光');
+
   await page.locator('#start-button').click();
   await expect(page.locator('#game-canvas')).toBeVisible();
   await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
+  await expect
+    .poll(async () => page.evaluate(() => window.__THREE_GAME_DIAGNOSTICS__?.coins))
+    .toBe(240);
+  await expect
+    .poll(async () => page.evaluate(() => window.__THREE_GAME_DIAGNOSTICS__?.coinPickups ?? 0))
+    .toBeGreaterThan(0);
 
   const sample = await sampleCanvas(page);
   expect(sample, JSON.stringify(sample)).toMatchObject({ ok: true });
