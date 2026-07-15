@@ -303,13 +303,16 @@ body {
 }
 
 #reward-flash {
-  min-height: 58px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
   padding: 12px 13px;
   border: 1px solid rgba(241, 217, 122, 0.22);
   border-left: 3px solid #f1d97a;
   background: linear-gradient(180deg, rgba(14, 21, 24, 0.82), rgba(14, 21, 24, 0.52));
   color: #f1d97a;
   font-weight: 900;
+  white-space: nowrap;
   opacity: 0;
 }
 
