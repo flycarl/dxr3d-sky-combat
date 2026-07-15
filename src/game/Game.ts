@@ -611,6 +611,7 @@ export class Game {
 
       if (enemy) {
         this.createExplosion(enemy.group.position, '#ff8a35');
+        this.hud.flashTargetHit();
         enemy.active = false;
         enemy.group.visible = false;
         enemy.respawnTimer = 4.5;
