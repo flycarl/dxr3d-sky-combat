@@ -296,6 +296,7 @@ export class Game {
   private addCoins(amount: number, label: string): void {
     this.profile = awardCoins(this.profile, amount);
     this.applyProfile();
+    this.syncCustomizationButtons();
     this.hud.flashReward(`+${amount} 金币 ${label}`);
   }
 
@@ -339,6 +340,11 @@ export class Game {
   }
 
   private buyCustomization(part: AircraftPartId, style: AircraftStyleId): void {
+    if (this.profile.customization[part] === style) {
+      this.shopMessage.textContent = `${AIRCRAFT_PART_LABELS[part]} 已是当前改装`;
+      return;
+    }
+
     const result = spendForCustomization(this.profile, part, style);
     if (!result.ok) {
       this.shopMessage.textContent = result.reason === 'insufficient-coins' ? '金币不足' : '无法应用这个改装';
