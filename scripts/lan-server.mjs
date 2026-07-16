@@ -20,13 +20,13 @@ for (let index = 2; index < process.argv.length; index += 1) {
 
 const port = Number(args.get('port') ?? process.env.PORT ?? 8787);
 const maxPlayers = 3;
+const rooms = new Map();
 const clients = new Map();
-let roomMode = 'deathmatch';
 let nextId = 1;
 
 const server = createServer((request, response) => {
   response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
-  response.end('dxr3d LAN server is running\n');
+  response.end('dxr3d LAN room server is running\n');
 });
 
 const wss = new WebSocketServer({ server });
@@ -38,16 +38,21 @@ function localAddresses() {
     .map((entry) => entry.address);
 }
 
+function makeRoomCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    let code = '';
+    for (let index = 0; index < 4; index += 1) {
+      code += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    if (!rooms.has(code)) return code;
+  }
+  throw new Error('无法生成房间邀请码');
+}
+
 function send(socket, payload) {
   if (socket.readyState !== socket.OPEN) return;
   socket.send(JSON.stringify(payload));
-}
-
-function broadcast(payload, exceptId = '') {
-  for (const [id, client] of clients) {
-    if (id === exceptId) continue;
-    send(client.socket, payload);
-  }
 }
 
 function publicState(client) {
@@ -64,8 +69,66 @@ function publicState(client) {
   };
 }
 
-function resetRoomIfEmpty() {
-  if (clients.size === 0) roomMode = 'deathmatch';
+function broadcast(roomCode, payload, exceptId = '') {
+  const room = rooms.get(roomCode);
+  if (!room) return;
+  for (const id of room.clients) {
+    if (id === exceptId) continue;
+    const client = clients.get(id);
+    if (client) send(client.socket, payload);
+  }
+}
+
+function removeClient(id) {
+  const client = clients.get(id);
+  if (!client) return;
+  const room = rooms.get(client.roomCode);
+  clients.delete(id);
+  if (!room) return;
+  room.clients.delete(id);
+  broadcast(client.roomCode, { type: 'peer-left', id });
+  if (room.clients.size === 0) rooms.delete(client.roomCode);
+}
+
+function joinRoom(socket, id, roomCode, message) {
+  const room = rooms.get(roomCode);
+  if (!room) {
+    send(socket, { type: 'error', message: '没有这个房间' });
+    socket.close();
+    return null;
+  }
+  if (room.clients.size >= maxPlayers) {
+    send(socket, { type: 'full', message: '房间已满，最多 3 人' });
+    socket.close();
+    return null;
+  }
+
+  const client = {
+    id,
+    socket,
+    roomCode,
+    name: String(message.name ?? id).slice(0, 14),
+    mode: room.mode,
+    skin: message.skin ?? 'standard',
+    health: 10,
+    lives: room.mode === 'three-lives' ? 3 : 0,
+    kills: 0,
+    position: { x: 0, y: 8, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+  };
+  clients.set(id, client);
+  room.clients.add(id);
+  send(socket, { type: 'welcome', id, mode: room.mode, maxPlayers, roomCode });
+  send(socket, {
+    type: 'snapshot',
+    peers: Array.from(room.clients)
+      .filter((peerId) => peerId !== id)
+      .map((peerId) => clients.get(peerId))
+      .filter(Boolean)
+      .map(publicState),
+  });
+  broadcast(roomCode, { type: 'peer-joined', peer: publicState(client) }, id);
+  return client;
 }
 
 wss.on('connection', (socket) => {
@@ -80,37 +143,21 @@ wss.on('connection', (socket) => {
       return;
     }
 
-    if (message.type === 'join') {
-      if (clients.size >= maxPlayers) {
-        send(socket, { type: 'full', message: '房间已满，最多 3 人' });
-        socket.close();
-        return;
-      }
-
+    if (message.type === 'create-room' || message.type === 'join-room') {
       id = `P${nextId}`;
       nextId += 1;
-      if (clients.size === 0) roomMode = message.mode ?? 'deathmatch';
-      const client = {
-        id,
-        socket,
-        name: String(message.name ?? id).slice(0, 14),
-        mode: roomMode,
-        skin: message.skin ?? 'standard',
-        health: 10,
-        lives: roomMode === 'three-lives' ? 3 : 0,
-        kills: 0,
-        position: { x: 0, y: 8, z: 0 },
-        rotation: { x: 0, y: 0, z: 0 },
-      };
-      clients.set(id, client);
-      send(socket, { type: 'welcome', id, mode: roomMode, maxPlayers });
-      send(socket, {
-        type: 'snapshot',
-        peers: Array.from(clients.values())
-          .filter((peer) => peer.id !== id)
-          .map(publicState),
-      });
-      broadcast({ type: 'peer-joined', peer: publicState(client) }, id);
+      const roomCode =
+        message.type === 'create-room'
+          ? makeRoomCode()
+          : String(message.roomCode ?? '').trim().toUpperCase();
+      if (message.type === 'create-room') {
+        rooms.set(roomCode, {
+          code: roomCode,
+          mode: message.mode ?? 'deathmatch',
+          clients: new Set(),
+        });
+      }
+      joinRoom(socket, id, roomCode, message);
       return;
     }
 
@@ -121,46 +168,49 @@ wss.on('connection', (socket) => {
       client.skin = message.skin ?? client.skin;
       client.position = message.position ?? client.position;
       client.rotation = message.rotation ?? client.rotation;
-      broadcast({ type: 'state', peer: publicState(client) }, id);
+      broadcast(client.roomCode, { type: 'state', peer: publicState(client) }, id);
     } else if (message.type === 'shot') {
-      broadcast({ type: 'shot', id, origin: message.origin, velocity: message.velocity }, id);
+      broadcast(client.roomCode, { type: 'shot', id, origin: message.origin, velocity: message.velocity }, id);
     } else if (message.type === 'hit') {
       const target = clients.get(String(message.targetId));
-      if (!target || target.health <= 0) return;
+      if (!target || target.roomCode !== client.roomCode || target.health <= 0) return;
       target.health = Math.max(0, target.health - 1);
       if (target.health === 0) {
         client.kills += 1;
-        if (roomMode === 'three-lives') target.lives = Math.max(0, target.lives - 1);
+        if (client.mode === 'three-lives') target.lives = Math.max(0, target.lives - 1);
         setTimeout(() => {
           if (!clients.has(target.id)) return;
           target.health = 10;
-          broadcast({ type: 'state', peer: publicState(target) });
+          broadcast(target.roomCode, { type: 'state', peer: publicState(target) });
         }, 1800);
       }
-      broadcast({
+      broadcast(client.roomCode, {
         type: 'hit',
         attackerId: client.id,
         targetId: target.id,
         health: target.health,
         lives: target.lives,
       });
-      broadcast({
+      const room = rooms.get(client.roomCode);
+      broadcast(client.roomCode, {
         type: 'score',
-        scores: Object.fromEntries(Array.from(clients.values()).map((peer) => [peer.id, peer.kills])),
+        scores: Object.fromEntries(
+          Array.from(room?.clients ?? []).map((peerId) => {
+            const peer = clients.get(peerId);
+            return [peerId, peer?.kills ?? 0];
+          }),
+        ),
       });
     }
   });
 
   socket.on('close', () => {
-    if (!id) return;
-    clients.delete(id);
-    broadcast({ type: 'peer-left', id });
-    resetRoomIfEmpty();
+    if (id) removeClient(id);
   });
 });
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`LAN server listening on ws://localhost:${port}`);
+  console.log(`LAN room server listening on ws://localhost:${port}`);
   for (const address of localAddresses()) {
     console.log(`同一 Wi-Fi 可连接: ws://${address}:${port}`);
   }

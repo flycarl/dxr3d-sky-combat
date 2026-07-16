@@ -26,8 +26,10 @@
                 <option value="three-lives">三条命</option>
                 <option value="timed-kills">限时击杀</option>
               </select>
+              <button id="create-room-button" type="button">创建房间</button>
+              <input id="invite-code" type="text" maxlength="4" placeholder="邀请码" aria-label="邀请码" />
+              <button id="join-room-button" type="button">加入房间</button>
               <input id="server-url" type="text" value="ws://localhost:8787" aria-label="服务器地址" />
-              <button id="join-button" type="button">加入</button>
             </div>
             <p id="multiplayer-status">开服务器：npm run lan-server -- --port 8787</p>
           </section>

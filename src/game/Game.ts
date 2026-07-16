@@ -139,8 +139,10 @@ export class Game {
   private readonly pauseButton = this.getElement('#pause-button') as HTMLButtonElement;
   private readonly retryButton = this.getElement('#retry-button') as HTMLButtonElement;
   private readonly menuButton = this.getElement('#menu-button') as HTMLButtonElement;
-  private readonly joinButton = this.getElement('#join-button') as HTMLButtonElement;
+  private readonly createRoomButton = this.getElement('#create-room-button') as HTMLButtonElement;
+  private readonly joinRoomButton = this.getElement('#join-room-button') as HTMLButtonElement;
   private readonly serverUrlInput = this.getElement('#server-url') as HTMLInputElement;
+  private readonly inviteCodeInput = this.getElement('#invite-code') as HTMLInputElement;
   private readonly matchModeSelect = this.getElement('#match-mode') as HTMLSelectElement;
   private readonly multiplayerStatus = this.getElement('#multiplayer-status');
   private readonly coinBalance = this.getElement('#coin-balance');
@@ -173,7 +175,8 @@ export class Game {
     this.pauseButton.addEventListener('click', this.togglePause);
     this.retryButton.addEventListener('click', this.startGame);
     this.menuButton.addEventListener('click', this.returnToMenu);
-    this.joinButton.addEventListener('click', this.joinMultiplayer);
+    this.createRoomButton.addEventListener('click', this.createMultiplayerRoom);
+    this.joinRoomButton.addEventListener('click', this.joinMultiplayerRoom);
     this.canvas.addEventListener('pointerdown', this.relockPointerFromCanvas);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
     this.multiplayer.addEventListener('message', this.onMultiplayerMessage);
@@ -195,7 +198,8 @@ export class Game {
     this.pauseButton.removeEventListener('click', this.togglePause);
     this.retryButton.removeEventListener('click', this.startGame);
     this.menuButton.removeEventListener('click', this.returnToMenu);
-    this.joinButton.removeEventListener('click', this.joinMultiplayer);
+    this.createRoomButton.removeEventListener('click', this.createMultiplayerRoom);
+    this.joinRoomButton.removeEventListener('click', this.joinMultiplayerRoom);
     this.canvas.removeEventListener('pointerdown', this.relockPointerFromCanvas);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     this.multiplayer.removeEventListener('message', this.onMultiplayerMessage);
@@ -272,14 +276,34 @@ export class Game {
     this.syncShellState();
   };
 
-  private readonly joinMultiplayer = (): void => {
+  private readonly createMultiplayerRoom = (): void => {
     const url = this.serverUrlInput.value.trim() || 'ws://localhost:8787';
     const selectedMode = this.matchModeSelect.value as MultiplayerMode;
-    this.multiplayerStatus.textContent = '正在连接...';
+    this.multiplayerStatus.textContent = '正在创建房间...';
     this.multiplayer.connect(url, {
+      action: 'create',
       name: `玩家${Math.floor(Math.random() * 900 + 100)}`,
       mode: selectedMode,
       skin: this.profile.selectedSkin,
+    });
+  };
+
+  private readonly joinMultiplayerRoom = (): void => {
+    const url = this.serverUrlInput.value.trim() || 'ws://localhost:8787';
+    const selectedMode = this.matchModeSelect.value as MultiplayerMode;
+    const roomCode = this.inviteCodeInput.value.trim().toUpperCase();
+    if (roomCode.length !== 4) {
+      this.multiplayerStatus.textContent = '请输入 4 位邀请码';
+      return;
+    }
+    this.inviteCodeInput.value = roomCode;
+    this.multiplayerStatus.textContent = '正在加入房间...';
+    this.multiplayer.connect(url, {
+      action: 'join',
+      name: `玩家${Math.floor(Math.random() * 900 + 100)}`,
+      mode: selectedMode,
+      skin: this.profile.selectedSkin,
+      roomCode,
     });
   };
 
@@ -292,7 +316,8 @@ export class Game {
     if (message.type === 'welcome') {
       this.multiplayerMode = message.mode;
       this.matchModeSelect.value = message.mode;
-      this.multiplayerStatus.textContent = `已进入 ${this.getModeLabel(message.mode)}，${message.maxPlayers} 人房间`;
+      this.inviteCodeInput.value = message.roomCode;
+      this.multiplayerStatus.textContent = `邀请码 ${message.roomCode}，${this.getModeLabel(message.mode)}，最多 ${message.maxPlayers} 人`;
       this.resetMission();
       this.mode = 'playing';
       this.input.setEnabled(false);

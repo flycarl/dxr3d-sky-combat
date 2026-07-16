@@ -154,11 +154,12 @@ body {
 
 #multiplayer-controls {
   display: grid;
-  grid-template-columns: minmax(108px, 0.8fr) minmax(160px, 1.4fr) auto;
+  grid-template-columns: minmax(108px, 0.85fr) auto minmax(82px, 0.5fr) auto;
   gap: 8px;
 }
 
 #match-mode,
+#invite-code,
 #server-url {
   min-width: 0;
   border: 1px solid rgba(244, 240, 223, 0.18);
@@ -170,7 +171,18 @@ body {
   padding: 10px 9px;
 }
 
-#join-button {
+#server-url {
+  grid-column: 1 / -1;
+}
+
+#invite-code {
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+#create-room-button,
+#join-room-button {
   border: 0;
   border-radius: 6px;
   background: #48baa7;
@@ -693,7 +705,8 @@ body {
     grid-template-columns: 1fr;
   }
 
-  #join-button {
+  #create-room-button,
+  #join-room-button {
     min-height: 42px;
   }
 

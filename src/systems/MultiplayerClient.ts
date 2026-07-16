@@ -15,7 +15,7 @@ export type NetworkRotation = {
 };
 
 export type MultiplayerEvent =
-  | { type: 'welcome'; id: string; mode: MultiplayerMode; maxPlayers: number }
+  | { type: 'welcome'; id: string; mode: MultiplayerMode; maxPlayers: number; roomCode: string }
   | { type: 'snapshot'; peers: RemotePlayerState[] }
   | { type: 'peer-joined'; peer: RemotePlayerState }
   | { type: 'peer-left'; id: string }
@@ -39,14 +39,17 @@ export type RemotePlayerState = {
 };
 
 type JoinOptions = {
+  action: 'create' | 'join';
   name: string;
   mode: MultiplayerMode;
   skin: AircraftSkinId;
+  roomCode?: string;
 };
 
 export class MultiplayerClient extends EventTarget {
   id = '';
   private socket: WebSocket | null = null;
+  private closingExpected = false;
 
   get connected(): boolean {
     return this.socket?.readyState === WebSocket.OPEN;
@@ -54,15 +57,17 @@ export class MultiplayerClient extends EventTarget {
 
   connect(url: string, options: JoinOptions): void {
     this.disconnect();
+    this.closingExpected = false;
     const socket = new WebSocket(url);
     this.socket = socket;
 
     socket.addEventListener('open', () => {
       this.send({
-        type: 'join',
+        type: options.action === 'create' ? 'create-room' : 'join-room',
         name: options.name,
         mode: options.mode,
         skin: options.skin,
+        roomCode: options.roomCode,
       });
       this.dispatchEvent(new CustomEvent('status', { detail: '已连接服务器' }));
     });
@@ -78,6 +83,7 @@ export class MultiplayerClient extends EventTarget {
     });
 
     socket.addEventListener('close', () => {
+      if (this.closingExpected) return;
       this.dispatchEvent(new CustomEvent('status', { detail: '联机已断开' }));
     });
 
@@ -100,6 +106,7 @@ export class MultiplayerClient extends EventTarget {
 
   disconnect(): void {
     if (!this.socket) return;
+    this.closingExpected = true;
     this.socket.close();
     this.socket = null;
     this.id = '';
