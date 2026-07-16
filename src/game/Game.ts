@@ -1065,13 +1065,20 @@ export class Game {
         this.hits = Math.min(this.maxHits, this.hits + 1);
         this.player.applyImpact(0.86);
         this.audio.crash();
-        this.hud.flashHit();
+        this.hud.flashHit(this.getDamageDirectionAngle(shot.mesh.position));
         this.removeShot(index);
         if (this.hits >= this.maxHits) this.crashPlayer();
       } else if (shot.age > 4) {
         this.removeShot(index);
       }
     }
+  }
+
+  private getDamageDirectionAngle(source: THREE.Vector3): number {
+    const dx = source.x - this.player.group.position.x;
+    const dz = source.z - this.player.group.position.z;
+    const worldAngle = Math.atan2(dx, -dz);
+    return worldAngle - this.player.group.rotation.y;
   }
 
   private removeShot(index: number): void {

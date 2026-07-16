@@ -13,7 +13,9 @@ export class Hud {
   private readonly overlayTitle = this.getElement('#overlay-title');
   private readonly overlayText = this.getElement('#overlay-text');
   private readonly weaponCrosshair = this.getElement('#weapon-crosshair');
+  private readonly damageDirection = this.getElement('#damage-direction');
   private hitMarkerTimer: number | undefined;
+  private damageDirectionTimer: number | undefined;
 
   setTarget(target: number): void {
     this.targetValue.textContent = String(target);
@@ -87,7 +89,8 @@ export class Hud {
     );
   }
 
-  flashHit(): void {
+  flashHit(angle = 0): void {
+    this.flashDamageDirection(angle);
     this.statusLine.animate(
       [
         { transform: 'translateX(0)', borderLeftColor: '#e23d2f' },
@@ -96,6 +99,17 @@ export class Hud {
       ],
       { duration: 260, easing: 'ease-out' },
     );
+  }
+
+  flashDamageDirection(angle: number): void {
+    window.clearTimeout(this.damageDirectionTimer);
+    this.damageDirection.style.setProperty('--damage-angle', `${angle}rad`);
+    this.damageDirection.classList.remove('is-visible');
+    void this.damageDirection.offsetWidth;
+    this.damageDirection.classList.add('is-visible');
+    this.damageDirectionTimer = window.setTimeout(() => {
+      this.damageDirection.classList.remove('is-visible');
+    }, 520);
   }
 
   flashTargetHit(): void {

@@ -59,6 +59,13 @@ export class Player {
     roughness: 0.58,
     metalness: 0.18,
   });
+  private readonly trimMaterial = new THREE.MeshStandardMaterial({
+    color: '#f4f0df',
+    roughness: 0.28,
+    metalness: 0.2,
+    emissive: '#0d4f69',
+    emissiveIntensity: 0.18,
+  });
   private readonly fuselageGeometry = new THREE.CylinderGeometry(0.28, 0.42, 2.6, 18);
   private readonly noseGeometry = new THREE.ConeGeometry(0.32, 0.66, 18);
   private readonly wingGeometry = new THREE.BoxGeometry(3.25, 0.08, 0.54);
@@ -67,6 +74,9 @@ export class Player {
   private readonly canopyGeometry = new THREE.SphereGeometry(0.36, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
   private readonly propellerGeometry = new THREE.BoxGeometry(0.12, 1.18, 0.04);
   private readonly propellerHubGeometry = new THREE.SphereGeometry(0.12, 12, 8);
+  private readonly bodyStripeGeometry = new THREE.BoxGeometry(0.09, 0.035, 1.92);
+  private readonly wingStripeGeometry = new THREE.BoxGeometry(0.09, 0.024, 0.78);
+  private readonly tailMarkGeometry = new THREE.BoxGeometry(0.12, 0.032, 0.34);
   private readonly propeller = new THREE.Group();
 
   constructor() {
@@ -111,6 +121,28 @@ export class Player {
     canopy.scale.set(1, 0.72, 1.18);
     canopy.castShadow = true;
     this.group.add(canopy);
+
+    const bodyStripe = new THREE.Mesh(this.bodyStripeGeometry, this.trimMaterial);
+    bodyStripe.position.set(0, 0.43, -0.22);
+    bodyStripe.castShadow = true;
+    this.group.add(bodyStripe);
+
+    const leftWingStripe = new THREE.Mesh(this.wingStripeGeometry, this.trimMaterial);
+    leftWingStripe.position.set(-0.88, 0.035, -0.2);
+    leftWingStripe.rotation.y = 0.72;
+    leftWingStripe.castShadow = true;
+    this.group.add(leftWingStripe);
+
+    const rightWingStripe = new THREE.Mesh(this.wingStripeGeometry, this.trimMaterial);
+    rightWingStripe.position.set(0.88, 0.035, -0.2);
+    rightWingStripe.rotation.y = -0.72;
+    rightWingStripe.castShadow = true;
+    this.group.add(rightWingStripe);
+
+    const tailMark = new THREE.Mesh(this.tailMarkGeometry, this.trimMaterial);
+    tailMark.position.set(0, 0.5, 1.11);
+    tailMark.castShadow = true;
+    this.group.add(tailMark);
 
     const bladeA = new THREE.Mesh(this.propellerGeometry, this.propellerMaterial);
     const bladeB = new THREE.Mesh(this.propellerGeometry, this.propellerMaterial);
@@ -182,6 +214,8 @@ export class Player {
     applyMaterialStyle(this.leftWingMaterial, skin.wing);
     applyMaterialStyle(this.rightWingMaterial, skin.wing);
     applyMaterialStyle(this.tailMaterial, skin.wing);
+    applyMaterialStyle(this.glassMaterial, skin.canopy);
+    applyMaterialStyle(this.trimMaterial, skin.trim);
     applyMaterialStyle(this.propellerMaterial, skin.propeller);
   }
 
@@ -230,11 +264,15 @@ export class Player {
     this.canopyGeometry.dispose();
     this.propellerGeometry.dispose();
     this.propellerHubGeometry.dispose();
+    this.bodyStripeGeometry.dispose();
+    this.wingStripeGeometry.dispose();
+    this.tailMarkGeometry.dispose();
     this.bodyMaterial.dispose();
     this.leftWingMaterial.dispose();
     this.rightWingMaterial.dispose();
     this.tailMaterial.dispose();
     this.glassMaterial.dispose();
     this.propellerMaterial.dispose();
+    this.trimMaterial.dispose();
   }
 }
