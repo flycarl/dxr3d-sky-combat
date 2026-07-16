@@ -342,8 +342,9 @@ export class Game {
   }
 
   private syncMultiplayerAvailability(): void {
-    if (this.canUseLanRooms()) return;
-    this.multiplayerStatus.textContent = '联机请打开房主发的游戏链接';
+    this.multiplayerStatus.textContent = this.canUseLanRooms()
+      ? '这个网址可单人，也可局域网创建或加入房间。'
+      : '单人可玩；联机请打开房主发的游戏链接。';
   }
 
   private promptForRoomCode(): string | null {
