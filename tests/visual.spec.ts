@@ -55,7 +55,7 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
   await page.goto('/');
   await expect(page.locator('#coin-balance')).toBeVisible();
   await expect(page.locator('#customization-shop')).toBeVisible();
-  await expect(page.locator('#customization-grid .style-button')).toHaveCount(20);
+  await expect(page.locator('#customization-grid .style-button')).toHaveCount(5);
   await expect(page.locator('#shop-message')).toContainText('金币');
 
   await page.evaluate(() => {
@@ -63,28 +63,24 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
       'dxr3d-player-profile-v1',
       JSON.stringify({
         coins: 500,
-        customization: {
-          body: 'gold',
-          leftWing: 'red',
-          rightWing: 'teal',
-          propeller: 'stealth',
-        },
+        selectedSkin: 'gold',
+        ownedSkins: ['standard', 'gold'],
       }),
     );
   });
   await page.reload();
   await expect(page.locator('#coin-balance')).toHaveText('500');
 
-  await page.locator('.style-button[data-part="body"][data-style="teal"]').click();
-  await expect(page.locator('#coin-balance')).toHaveText('240');
-  await expect(page.locator('#shop-message')).toContainText('机身 已改装为 青色辉光');
+  await page.locator('.style-button[data-skin="teal"]').click();
+  await expect(page.locator('#coin-balance')).toHaveText('180');
+  await expect(page.locator('#shop-message')).toContainText('已购买并使用 青色发光机');
 
   await page.locator('#start-button').click();
   await expect(page.locator('#game-canvas')).toBeVisible();
   await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
   await expect
     .poll(async () => page.evaluate(() => window.__THREE_GAME_DIAGNOSTICS__?.coins))
-    .toBe(240);
+    .toBe(180);
   await expect
     .poll(async () => page.evaluate(() => window.__THREE_GAME_DIAGNOSTICS__?.coinPickups ?? 0))
     .toBeGreaterThan(0);
@@ -126,12 +122,12 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
   expect(pageErrors).toEqual([]);
 });
 
-test('customization reports insufficient funds and persists one paid selection', async ({ page }) => {
+test('skin shop reports insufficient funds and persists owned skins', async ({ page }) => {
   await page.goto('/');
 
-  const tealBody = page.locator('.style-button[data-part="body"][data-style="teal"]');
-  await expect(tealBody).toBeEnabled();
-  await tealBody.click();
+  const tealSkin = page.locator('.style-button[data-skin="teal"]');
+  await expect(tealSkin).toBeEnabled();
+  await tealSkin.click();
   await expect(page.locator('#shop-message')).toHaveText('金币不足');
   await expect(page.locator('#coin-balance')).toHaveText('0');
 
@@ -140,26 +136,26 @@ test('customization reports insufficient funds and persists one paid selection',
       'dxr3d-player-profile-v1',
       JSON.stringify({
         coins: 500,
-        customization: {
-          body: 'red',
-          leftWing: 'standard',
-          rightWing: 'standard',
-          propeller: 'stealth',
-        },
+        selectedSkin: 'standard',
+        ownedSkins: ['standard'],
       }),
     );
   });
   await page.reload();
 
-  await tealBody.click();
-  await expect(page.locator('#coin-balance')).toHaveText('240');
-  await tealBody.click();
-  await expect(page.locator('#coin-balance')).toHaveText('240');
-  await expect(page.locator('#shop-message')).toContainText('已是当前改装');
+  await tealSkin.click();
+  await expect(page.locator('#coin-balance')).toHaveText('180');
+  await expect(page.locator('#shop-message')).toContainText('已购买并使用 青色发光机');
+  await page.locator('.style-button[data-skin="standard"]').click();
+  await expect(page.locator('#coin-balance')).toHaveText('180');
+  await expect(page.locator('#shop-message')).toContainText('已切换到 蓝色双翼机');
+  await tealSkin.click();
+  await expect(page.locator('#coin-balance')).toHaveText('180');
+  await expect(page.locator('#shop-message')).toContainText('已切换到 青色发光机');
 
   await page.reload();
-  await expect(page.locator('#coin-balance')).toHaveText('240');
-  await expect(tealBody).toHaveClass(/is-selected/);
+  await expect(page.locator('#coin-balance')).toHaveText('180');
+  await expect(tealSkin).toHaveClass(/is-selected/);
 });
 
 test('starts with an in-memory profile when localStorage writes fail', async ({ page }) => {

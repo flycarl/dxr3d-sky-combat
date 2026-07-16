@@ -436,12 +436,13 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
+  --pitch-y: 0px;
   width: 18px;
   aspect-ratio: 1;
   border: 1px solid rgba(241, 217, 122, 0.95);
   border-radius: 50%;
   pointer-events: none;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, calc(-50% + var(--pitch-y)));
   box-shadow:
     0 0 10px rgba(241, 217, 122, 0.46),
     inset 0 0 8px rgba(241, 217, 122, 0.18);

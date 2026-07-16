@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { InputController } from '../core/InputController';
-import { applyStyleToMaterial, type AircraftCustomization } from '../systems/Customization';
+import { AIRCRAFT_SKINS, applyMaterialStyle, type AircraftSkinId } from '../systems/Customization';
 
 export type PlayerTuning = {
   maxSpeed: number;
@@ -147,16 +147,6 @@ export class Player {
       bounds.maxAltitude,
     );
 
-    this.forward.set(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.group.rotation.y);
-    this.velocity.copy(this.forward).multiplyScalar(this.speed);
-    this.velocity.y = climb;
-    this.group.position.addScaledVector(this.forward, this.speed * delta);
-
-    if (this.group.position.x < -bounds.halfWidth) this.group.position.x = bounds.halfWidth;
-    if (this.group.position.x > bounds.halfWidth) this.group.position.x = -bounds.halfWidth;
-    if (this.group.position.z < -bounds.halfDepth) this.group.position.z = bounds.halfDepth;
-    if (this.group.position.z > bounds.halfDepth) this.group.position.z = -bounds.halfDepth;
-
     this.boostEnergy = THREE.MathUtils.clamp(this.boostEnergy + (boostHeld ? -0.3 : 0.14) * delta, 0, 1);
     this.hitFlash = Math.max(0, this.hitFlash - delta * 4);
     this.updateBodyEmissive();
@@ -165,21 +155,33 @@ export class Player {
     const pitch = THREE.MathUtils.clamp(throttle * 0.46, -0.42, 0.5);
     this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, bank, 1 - Math.exp(-delta * 8.5));
     this.group.rotation.x = THREE.MathUtils.lerp(this.group.rotation.x, pitch, 1 - Math.exp(-delta * 8.5));
+    this.forward.set(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+    this.velocity.copy(this.forward).multiplyScalar(this.speed);
+    this.velocity.y += climb;
+    const travel = new THREE.Vector3(this.forward.x, 0, this.forward.z).normalize();
+    this.group.position.addScaledVector(travel, this.speed * delta);
+
+    if (this.group.position.x < -bounds.halfWidth) this.group.position.x = bounds.halfWidth;
+    if (this.group.position.x > bounds.halfWidth) this.group.position.x = -bounds.halfWidth;
+    if (this.group.position.z < -bounds.halfDepth) this.group.position.z = bounds.halfDepth;
+    if (this.group.position.z > bounds.halfDepth) this.group.position.z = -bounds.halfDepth;
+
     this.group.position.y += Math.sin(elapsed * 6.5) * 0.004;
 
     this.propellerSpin += delta * (32 + this.speed * 2.8);
     this.propeller.rotation.z = this.propellerSpin;
   }
 
-  applyCustomization(customization: AircraftCustomization): void {
-    applyStyleToMaterial(this.bodyMaterial, customization.body);
+  applySkin(skinId: AircraftSkinId): void {
+    const skin = AIRCRAFT_SKINS[skinId];
+    applyMaterialStyle(this.bodyMaterial, skin.body);
     this.bodyBaseEmissive.copy(this.bodyMaterial.emissive);
     this.bodyBaseEmissiveIntensity = this.bodyMaterial.emissiveIntensity;
     this.updateBodyEmissive();
-    applyStyleToMaterial(this.leftWingMaterial, customization.leftWing);
-    applyStyleToMaterial(this.rightWingMaterial, customization.rightWing);
-    applyStyleToMaterial(this.propellerMaterial, customization.propeller);
-    applyStyleToMaterial(this.tailMaterial, customization.leftWing);
+    applyMaterialStyle(this.leftWingMaterial, skin.wing);
+    applyMaterialStyle(this.rightWingMaterial, skin.wing);
+    applyMaterialStyle(this.tailMaterial, skin.wing);
+    applyMaterialStyle(this.propellerMaterial, skin.propeller);
   }
 
   applyImpact(retain = 0.5): void {

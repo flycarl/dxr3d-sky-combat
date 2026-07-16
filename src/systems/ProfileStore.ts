@@ -1,15 +1,14 @@
 import {
-  AIRCRAFT_STYLES,
-  DEFAULT_CUSTOMIZATION,
-  type AircraftCustomization,
-  type AircraftPartId,
-  type AircraftStyleId,
-  isAircraftStyleId,
+  AIRCRAFT_SKINS,
+  DEFAULT_SKIN,
+  type AircraftSkinId,
+  isAircraftSkinId,
 } from './Customization';
 
 export type PlayerProfile = {
   coins: number;
-  customization: AircraftCustomization;
+  selectedSkin: AircraftSkinId;
+  ownedSkins: AircraftSkinId[];
 };
 
 export const PROFILE_STORAGE_KEY = 'dxr3d-player-profile-v1';
@@ -22,36 +21,61 @@ export const COIN_REWARDS = {
 
 export const DEFAULT_PROFILE: PlayerProfile = {
   coins: 0,
-  customization: { ...DEFAULT_CUSTOMIZATION },
+  selectedSkin: DEFAULT_SKIN,
+  ownedSkins: [DEFAULT_SKIN],
 };
 
+function getStorage(storage?: Storage): Storage | null {
+  try {
+    return storage ?? window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function uniqueSkins(values: AircraftSkinId[]): AircraftSkinId[] {
+  return Array.from(new Set([DEFAULT_SKIN, ...values]));
+}
+
 function cloneProfile(profile: PlayerProfile): PlayerProfile {
+  const selectedSkin = isAircraftSkinId(profile.selectedSkin) ? profile.selectedSkin : DEFAULT_SKIN;
   return {
     coins: Math.max(0, Math.floor(profile.coins)),
-    customization: { ...profile.customization },
+    selectedSkin,
+    ownedSkins: uniqueSkins(profile.ownedSkins.filter(isAircraftSkinId).concat(selectedSkin)),
   };
+}
+
+function migrateOldCustomization(value: Record<string, unknown>): AircraftSkinId {
+  const oldCustomization = value.customization;
+  if (!oldCustomization || typeof oldCustomization !== 'object') return DEFAULT_SKIN;
+  const bodyStyle = (oldCustomization as Record<string, unknown>).body;
+  return typeof bodyStyle === 'string' && isAircraftSkinId(bodyStyle) ? bodyStyle : DEFAULT_SKIN;
 }
 
 function normalizeProfile(value: unknown): PlayerProfile {
   if (!value || typeof value !== 'object') return cloneProfile(DEFAULT_PROFILE);
-  const candidate = value as Partial<PlayerProfile>;
-  const customization = { ...DEFAULT_CUSTOMIZATION };
-  const rawCustomization = candidate.customization;
-  if (rawCustomization && typeof rawCustomization === 'object') {
-    for (const part of Object.keys(customization) as AircraftPartId[]) {
-      const rawStyle = (rawCustomization as Record<string, unknown>)[part];
-      if (typeof rawStyle === 'string' && isAircraftStyleId(rawStyle)) customization[part] = rawStyle;
-    }
-  }
-  return {
-    coins: typeof candidate.coins === 'number' && Number.isFinite(candidate.coins) ? Math.max(0, Math.floor(candidate.coins)) : 0,
-    customization,
-  };
+  const candidate = value as Partial<PlayerProfile> & Record<string, unknown>;
+  const migratedSkin = migrateOldCustomization(candidate);
+  const selectedSkin =
+    typeof candidate.selectedSkin === 'string' && isAircraftSkinId(candidate.selectedSkin)
+      ? candidate.selectedSkin
+      : migratedSkin;
+  const ownedSkins = Array.isArray(candidate.ownedSkins)
+    ? candidate.ownedSkins.filter((skin): skin is AircraftSkinId => typeof skin === 'string' && isAircraftSkinId(skin))
+    : [selectedSkin];
+
+  return cloneProfile({
+    coins: typeof candidate.coins === 'number' && Number.isFinite(candidate.coins) ? candidate.coins : 0,
+    selectedSkin,
+    ownedSkins,
+  });
 }
 
 export function loadProfile(storage?: Storage): PlayerProfile {
   try {
-    const raw = (storage ?? window.localStorage).getItem(PROFILE_STORAGE_KEY);
+    const resolvedStorage = getStorage(storage);
+    const raw = resolvedStorage?.getItem(PROFILE_STORAGE_KEY);
     if (!raw) return cloneProfile(DEFAULT_PROFILE);
     return normalizeProfile(JSON.parse(raw));
   } catch {
@@ -61,7 +85,7 @@ export function loadProfile(storage?: Storage): PlayerProfile {
 
 export function saveProfile(profile: PlayerProfile, storage?: Storage): void {
   try {
-    (storage ?? window.localStorage).setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloneProfile(profile)));
+    getStorage(storage)?.setItem(PROFILE_STORAGE_KEY, JSON.stringify(cloneProfile(profile)));
   } catch {
     // Continue with the in-memory profile when browser storage is unavailable.
   }
@@ -74,24 +98,31 @@ export function awardCoins(profile: PlayerProfile, amount: number): PlayerProfil
   };
 }
 
-export function spendForCustomization(
+export function selectOrBuySkin(
   profile: PlayerProfile,
-  part: AircraftPartId,
-  style: AircraftStyleId,
-): { profile: PlayerProfile; ok: boolean; reason: 'applied' | 'insufficient-coins' | 'invalid-style' } {
-  const styleDefinition = AIRCRAFT_STYLES[style];
-  if (!styleDefinition) return { profile, ok: false, reason: 'invalid-style' };
-  const cost = styleDefinition.cost;
-  if (profile.coins < cost) return { profile, ok: false, reason: 'insufficient-coins' };
+  skin: AircraftSkinId,
+): { profile: PlayerProfile; ok: boolean; reason: 'selected' | 'purchased' | 'insufficient-coins' | 'invalid-skin' } {
+  const skinDefinition = AIRCRAFT_SKINS[skin];
+  if (!skinDefinition) return { profile, ok: false, reason: 'invalid-skin' };
+  if (profile.ownedSkins.includes(skin)) {
+    return {
+      profile: {
+        ...profile,
+        selectedSkin: skin,
+        ownedSkins: uniqueSkins(profile.ownedSkins),
+      },
+      ok: true,
+      reason: 'selected',
+    };
+  }
+  if (profile.coins < skinDefinition.cost) return { profile, ok: false, reason: 'insufficient-coins' };
   return {
     profile: {
-      coins: profile.coins - cost,
-      customization: {
-        ...profile.customization,
-        [part]: style,
-      },
+      coins: profile.coins - skinDefinition.cost,
+      selectedSkin: skin,
+      ownedSkins: uniqueSkins([...profile.ownedSkins, skin]),
     },
     ok: true,
-    reason: 'applied',
+    reason: 'purchased',
   };
 }

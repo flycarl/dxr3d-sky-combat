@@ -35,12 +35,12 @@ export class AudioSystem {
     const pulseGain = this.context.createGain();
 
     this.propOscillator.type = 'sawtooth';
-    this.propOscillator.frequency.setValueAtTime(82, now);
+    this.propOscillator.frequency.setValueAtTime(96, now);
     this.propPulse.type = 'square';
-    this.propPulse.frequency.setValueAtTime(26, now);
-    pulseGain.gain.setValueAtTime(0.018, now);
+    this.propPulse.frequency.setValueAtTime(34, now);
+    pulseGain.gain.setValueAtTime(0.014, now);
     this.propGain.gain.setValueAtTime(0.0001, now);
-    this.propGain.gain.exponentialRampToValueAtTime(0.024, now + 0.18);
+    this.propGain.gain.exponentialRampToValueAtTime(0.021, now + 0.18);
 
     this.propOscillator.connect(this.propGain);
     this.propPulse.connect(pulseGain).connect(this.propGain);
@@ -67,9 +67,9 @@ export class AudioSystem {
     const now = this.context.currentTime;
     const ratio = Math.max(0, Math.min(speedRatio, 1.35));
     const boostLift = boosting ? 22 : 0;
-    this.propOscillator.frequency.setTargetAtTime(72 + ratio * 62 + boostLift, now, 0.08);
-    this.propPulse.frequency.setTargetAtTime(20 + ratio * 20 + (boosting ? 8 : 0), now, 0.08);
-    this.propGain.gain.setTargetAtTime(0.018 + ratio * 0.02 + (boosting ? 0.01 : 0), now, 0.08);
+    this.propOscillator.frequency.setTargetAtTime(86 + ratio * 76 + boostLift, now, 0.08);
+    this.propPulse.frequency.setTargetAtTime(28 + ratio * 24 + (boosting ? 10 : 0), now, 0.08);
+    this.propGain.gain.setTargetAtTime(0.014 + ratio * 0.018 + (boosting ? 0.008 : 0), now, 0.08);
   }
 
   pickup(index: number): void {
@@ -96,14 +96,14 @@ export class AudioSystem {
     const now = this.context.currentTime;
 
     oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(120, now);
-    oscillator.frequency.exponentialRampToValueAtTime(48, now + 0.18);
+    oscillator.frequency.setValueAtTime(150, now);
+    oscillator.frequency.exponentialRampToValueAtTime(38, now + 0.24);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
     oscillator.connect(gain).connect(this.context.destination);
     oscillator.start(now);
-    oscillator.stop(now + 0.24);
+    oscillator.stop(now + 0.34);
   }
 
   shoot(): void {
@@ -112,12 +112,12 @@ export class AudioSystem {
     const gain = this.context.createGain();
     const now = this.context.currentTime;
 
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(940, now);
-    oscillator.frequency.exponentialRampToValueAtTime(260, now + 0.055);
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(1280, now);
+    oscillator.frequency.exponentialRampToValueAtTime(310, now + 0.052);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.07, now + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.095, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
     oscillator.connect(gain).connect(this.context.destination);
     oscillator.start(now);
     oscillator.stop(now + 0.09);

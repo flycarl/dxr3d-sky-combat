@@ -6,10 +6,8 @@ import { Player, type ArenaBounds } from '../entities/Player';
 import { AudioSystem } from '../systems/AudioSystem';
 import { CameraRig } from '../systems/CameraRig';
 import {
-  AIRCRAFT_PART_LABELS,
-  AIRCRAFT_STYLES,
-  type AircraftPartId,
-  type AircraftStyleId,
+  AIRCRAFT_SKINS,
+  type AircraftSkinId,
 } from '../systems/Customization';
 import { DebugTools, type DebugTuning } from '../systems/DebugTools';
 import { Hud } from '../systems/Hud';
@@ -18,7 +16,7 @@ import {
   awardCoins,
   loadProfile,
   saveProfile,
-  spendForCustomization,
+  selectOrBuySkin,
   type PlayerProfile,
 } from '../systems/ProfileStore';
 import { disposeObject3D } from '../utils/dispose';
@@ -127,6 +125,7 @@ export class Game {
   private readonly coinBalance = this.getElement('#coin-balance');
   private readonly shopMessage = this.getElement('#shop-message');
   private readonly customizationGrid = this.getElement('#customization-grid');
+  private readonly weaponCrosshair = this.getElement('#weapon-crosshair');
   private profile: PlayerProfile = loadProfile();
   private pointerLockReleaseExpected = false;
 
@@ -209,7 +208,15 @@ export class Game {
     this.updateExplosions(delta);
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, 58 + speedRatio * 5, 1 - Math.exp(-delta * 3));
     this.camera.updateProjectionMatrix();
-    this.cameraRig.update(delta, this.player.group.position, this.player.group.rotation.y, this.tuning.cameraLag, speedRatio);
+    this.cameraRig.update(
+      delta,
+      this.player.group.position,
+      this.player.group.rotation.y,
+      this.player.group.rotation.x,
+      this.tuning.cameraLag,
+      speedRatio,
+    );
+    this.weaponCrosshair.style.setProperty('--pitch-y', `${-this.player.group.rotation.x * 96}px`);
     this.syncShellState();
     this.updateHud();
     this.publishDiagnostics();
@@ -293,7 +300,7 @@ export class Game {
   }
 
   private applyProfile(): void {
-    this.player.applyCustomization(this.profile.customization);
+    this.player.applySkin(this.profile.selectedSkin);
     this.coinBalance.textContent = String(this.profile.coins);
     this.hud.setCoins(this.profile.coins);
     saveProfile(this.profile);
@@ -302,56 +309,50 @@ export class Game {
   private addCoins(amount: number, label: string): void {
     this.profile = awardCoins(this.profile, amount);
     this.applyProfile();
-    this.syncCustomizationButtons();
+    this.syncSkinButtons();
     this.hud.flashReward(`+${amount} 金币 ${label}`);
   }
 
   private renderCustomizationShop(): void {
     this.customizationGrid.innerHTML = '';
-    for (const part of Object.keys(AIRCRAFT_PART_LABELS) as AircraftPartId[]) {
-      const section = document.createElement('section');
-      section.className = 'shop-part';
-      const title = document.createElement('h3');
-      title.textContent = AIRCRAFT_PART_LABELS[part];
-      section.append(title);
-
-      for (const style of Object.values(AIRCRAFT_STYLES)) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'style-button';
-        button.dataset.part = part;
-        button.dataset.style = style.id;
-        button.innerHTML = `<span class="style-swatch"></span><span>${style.label}</span><span class="style-cost">${style.cost}</span>`;
-        const swatch = button.querySelector<HTMLElement>('.style-swatch');
-        if (swatch) swatch.style.background = style.color;
-        button.addEventListener('click', () => this.buyCustomization(part, style.id));
-        section.append(button);
-      }
-
-      this.customizationGrid.append(section);
+    for (const skin of Object.values(AIRCRAFT_SKINS)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'style-button skin-button';
+      button.dataset.skin = skin.id;
+      button.innerHTML = `<span class="style-swatch"></span><span>${skin.label}</span><span class="style-cost">${skin.cost}</span>`;
+      const swatch = button.querySelector<HTMLElement>('.style-swatch');
+      if (swatch) swatch.style.background = skin.body.color;
+      button.addEventListener('click', () => this.buySkin(skin.id));
+      this.customizationGrid.append(button);
     }
-    this.syncCustomizationButtons();
+    this.syncSkinButtons();
   }
 
-  private syncCustomizationButtons(): void {
-    const buttons = this.customizationGrid.querySelectorAll<HTMLButtonElement>('.style-button[data-part][data-style]');
+  private syncSkinButtons(): void {
+    const buttons = this.customizationGrid.querySelectorAll<HTMLButtonElement>('.style-button[data-skin]');
     buttons.forEach((button) => {
-      const part = button.dataset.part as AircraftPartId;
-      const style = button.dataset.style as AircraftStyleId;
-      const selected = this.profile.customization[part] === style;
+      const skin = button.dataset.skin as AircraftSkinId;
+      const selected = this.profile.selectedSkin === skin;
+      const owned = this.profile.ownedSkins.includes(skin);
       button.classList.toggle('is-selected', selected);
+      button.classList.toggle('is-owned', owned);
+      const costLabel = button.querySelector<HTMLElement>('.style-cost');
+      if (costLabel) {
+        costLabel.textContent = selected ? '使用中' : owned ? '已拥有' : String(AIRCRAFT_SKINS[skin].cost);
+      }
     });
   }
 
-  private buyCustomization(part: AircraftPartId, style: AircraftStyleId): void {
-    if (this.profile.customization[part] === style) {
-      this.shopMessage.textContent = `${AIRCRAFT_PART_LABELS[part]} 已是当前改装`;
+  private buySkin(skin: AircraftSkinId): void {
+    if (this.profile.selectedSkin === skin) {
+      this.shopMessage.textContent = `${AIRCRAFT_SKINS[skin].label} 正在使用`;
       return;
     }
 
-    const result = spendForCustomization(this.profile, part, style);
+    const result = selectOrBuySkin(this.profile, skin);
     if (!result.ok) {
-      this.shopMessage.textContent = result.reason === 'insufficient-coins' ? '金币不足' : '无法应用这个改装';
+      this.shopMessage.textContent = result.reason === 'insufficient-coins' ? '金币不足' : '无法使用这个皮肤';
       this.shopMessage.animate(
         [
           { transform: 'translateX(0)', color: 'rgba(244, 240, 223, 0.74)' },
@@ -363,9 +364,12 @@ export class Game {
       return;
     }
     this.profile = result.profile;
-    this.shopMessage.textContent = `${AIRCRAFT_PART_LABELS[part]} 已改装为 ${AIRCRAFT_STYLES[style].label}`;
+    this.shopMessage.textContent =
+      result.reason === 'purchased'
+        ? `已购买并使用 ${AIRCRAFT_SKINS[skin].label}`
+        : `已切换到 ${AIRCRAFT_SKINS[skin].label}`;
     this.applyProfile();
-    this.syncCustomizationButtons();
+    this.syncSkinButtons();
   }
 
   private render(): void {
@@ -764,12 +768,9 @@ export class Game {
       });
 
       if (enemy) {
-        this.createExplosion(enemy.group.position, '#ff8a35');
+        this.destroyEnemy(enemy);
         this.hud.flashTargetHit();
         this.addCoins(COIN_REWARDS.aiKill, '击落');
-        enemy.active = false;
-        enemy.group.visible = false;
-        enemy.respawnTimer = 4.5;
         this.audio.pickup(5);
         this.removePlayerShot(index);
       } else if (shot.age > 2.2) {
@@ -810,6 +811,16 @@ export class Game {
     shot.mesh.geometry.dispose();
     const materials = Array.isArray(shot.mesh.material) ? shot.mesh.material : [shot.mesh.material];
     materials.forEach((material) => material.dispose());
+  }
+
+  private destroyEnemy(enemy: Enemy): void {
+    if (!enemy.active) return;
+    this.createExplosion(enemy.group.position, '#ff8a35');
+    enemy.active = false;
+    enemy.group.visible = false;
+    enemy.respawnTimer = 4.5;
+    enemy.burstRemaining = 0;
+    enemy.burstTimer = 0;
   }
 
   private createExplosion(position: THREE.Vector3, color: string): void {
@@ -963,11 +974,12 @@ export class Game {
   }
 
   private checkEnemyCrash(): void {
-    const collided = this.enemies.some((enemy) => {
+    const collided = this.enemies.find((enemy) => {
       return enemy.active && enemy.group.position.distanceToSquared(this.player.group.position) < 2.1 * 2.1;
     });
     if (!collided) return;
 
+    this.destroyEnemy(collided);
     this.crashPlayer();
   }
 
@@ -1008,7 +1020,7 @@ export class Game {
     this.hits = 0;
     this.mode = 'playing';
     this.player.reset();
-    this.player.applyCustomization(this.profile.customization);
+    this.player.applySkin(this.profile.selectedSkin);
     this.player.group.visible = true;
     for (let index = this.shots.length - 1; index >= 0; index -= 1) this.removeShot(index);
     for (let index = this.playerShots.length - 1; index >= 0; index -= 1) this.removePlayerShot(index);
