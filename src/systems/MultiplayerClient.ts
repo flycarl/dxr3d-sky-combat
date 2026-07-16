@@ -96,6 +96,7 @@ export class MultiplayerClient extends EventTarget {
     });
 
     socket.addEventListener('error', () => {
+      this.closingExpected = true;
       this.dispatchEvent(new CustomEvent('status', { detail: this.describeConnectionError(url) }));
     });
   }

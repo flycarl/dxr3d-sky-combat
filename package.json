@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4174",
     "lan-server": "node scripts/lan-server.mjs",
+    "play-lan": "node scripts/play-lan.mjs",
     "test": "playwright test",
     "verify:visual": "playwright test tests/visual.spec.ts",
     "inspect:canvas": "node scripts/inspect-threejs-canvas.mjs"

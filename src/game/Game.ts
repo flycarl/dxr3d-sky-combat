@@ -172,6 +172,7 @@ export class Game {
     this.mode = 'menu';
     this.input.setEnabled(false);
     this.serverUrlInput.value = this.getDefaultServerUrl();
+    this.syncMultiplayerAvailability();
     this.startButton.addEventListener('click', this.startGame);
     this.pauseButton.addEventListener('click', this.togglePause);
     this.retryButton.addEventListener('click', this.startGame);
@@ -278,6 +279,10 @@ export class Game {
   };
 
   private readonly createMultiplayerRoom = (): void => {
+    if (!this.canUseLanRooms()) {
+      this.multiplayerStatus.textContent = '联机请打开房主发的游戏链接';
+      return;
+    }
     const url = this.getServerUrl();
     const selectedMode = this.matchModeSelect.value as MultiplayerMode;
     const roomCode = this.promptForRoomCode();
@@ -294,6 +299,10 @@ export class Game {
   };
 
   private readonly joinMultiplayerRoom = (): void => {
+    if (!this.canUseLanRooms()) {
+      this.multiplayerStatus.textContent = '联机请打开房主发的游戏链接';
+      return;
+    }
     const url = this.getServerUrl();
     const selectedMode = this.matchModeSelect.value as MultiplayerMode;
     const roomCode = this.inviteCodeInput.value.trim().toUpperCase();
@@ -326,6 +335,15 @@ export class Game {
     const host = window.location.hostname;
     if (!host || host === 'flycarl.github.io') return 'ws://localhost:8787';
     return `ws://${host}:8787`;
+  }
+
+  private canUseLanRooms(): boolean {
+    return window.location.protocol !== 'https:' && window.location.hostname !== 'flycarl.github.io';
+  }
+
+  private syncMultiplayerAvailability(): void {
+    if (this.canUseLanRooms()) return;
+    this.multiplayerStatus.textContent = '联机请打开房主发的游戏链接';
   }
 
   private promptForRoomCode(): string | null {
