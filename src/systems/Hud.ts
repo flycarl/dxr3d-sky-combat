@@ -13,6 +13,7 @@ export class Hud {
   private readonly overlayTitle = this.getElement('#overlay-title');
   private readonly overlayText = this.getElement('#overlay-text');
   private readonly weaponCrosshair = this.getElement('#weapon-crosshair');
+  private hitMarkerTimer: number | undefined;
 
   setTarget(target: number): void {
     this.targetValue.textContent = String(target);
@@ -98,25 +99,26 @@ export class Hud {
   }
 
   flashTargetHit(): void {
+    window.clearTimeout(this.hitMarkerTimer);
+    this.weaponCrosshair.classList.remove('is-hit');
+    void this.weaponCrosshair.offsetWidth;
+    this.weaponCrosshair.classList.add('is-hit');
+    this.hitMarkerTimer = window.setTimeout(() => {
+      this.weaponCrosshair.classList.remove('is-hit');
+    }, 180);
     this.weaponCrosshair.animate(
       [
         {
-          borderColor: 'rgba(241, 217, 122, 0.95)',
-          boxShadow: '0 0 10px rgba(241, 217, 122, 0.46), inset 0 0 8px rgba(241, 217, 122, 0.18)',
           filter: 'brightness(1)',
-          transform: 'translate(-50%, -50%) scale(1)',
+          transform: 'translate(-50%, calc(-50% + var(--pitch-y))) scale(1)',
         },
         {
-          borderColor: 'rgba(255, 245, 188, 1)',
-          boxShadow: '0 0 26px rgba(255, 222, 78, 0.95), inset 0 0 16px rgba(255, 222, 78, 0.48)',
-          filter: 'brightness(1.7)',
-          transform: 'translate(-50%, -50%) scale(1.65)',
+          filter: 'brightness(1.85)',
+          transform: 'translate(-50%, calc(-50% + var(--pitch-y))) scale(1.42)',
         },
         {
-          borderColor: 'rgba(241, 217, 122, 0.95)',
-          boxShadow: '0 0 10px rgba(241, 217, 122, 0.46), inset 0 0 8px rgba(241, 217, 122, 0.18)',
           filter: 'brightness(1)',
-          transform: 'translate(-50%, -50%) scale(1)',
+          transform: 'translate(-50%, calc(-50% + var(--pitch-y))) scale(1)',
         },
       ],
       { duration: 180, easing: 'cubic-bezier(0.2, 0.9, 0.2, 1)' },

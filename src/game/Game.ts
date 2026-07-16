@@ -19,6 +19,13 @@ import {
   selectOrBuySkin,
   type PlayerProfile,
 } from '../systems/ProfileStore';
+import {
+  MultiplayerClient,
+  type MultiplayerEvent,
+  type MultiplayerMode,
+  type NetworkVector,
+  type RemotePlayerState,
+} from '../systems/MultiplayerClient';
 import { disposeObject3D } from '../utils/dispose';
 
 const ARENA: ArenaBounds = {
@@ -56,6 +63,12 @@ type PlayerShot = {
   age: number;
 };
 
+type RemotePlayer = {
+  group: THREE.Group;
+  healthFill: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+  state: RemotePlayerState;
+};
+
 type RepairPickup = {
   group: THREE.Group;
   active: boolean;
@@ -89,7 +102,9 @@ export class Game {
   private readonly repairs: RepairPickup[] = [];
   private readonly coins: CoinPickup[] = [];
   private readonly explosions: ExplosionParticle[] = [];
+  private readonly remotePlayers = new Map<string, RemotePlayer>();
   private readonly audio = new AudioSystem();
+  private readonly multiplayer = new MultiplayerClient();
   private readonly hud = new Hud();
   private readonly cameraRig = new CameraRig(this.camera);
   private readonly loop = new Loop(
@@ -115,6 +130,8 @@ export class Game {
   private elapsed = 0;
   private hits = 0;
   private fireCooldown = 0;
+  private multiplayerSendTimer = 0;
+  private multiplayerMode: MultiplayerMode | null = null;
   private mode: GameMode = 'menu';
   private readonly maxHits = 10;
   private readonly app = this.getElement('#app');
@@ -122,6 +139,10 @@ export class Game {
   private readonly pauseButton = this.getElement('#pause-button') as HTMLButtonElement;
   private readonly retryButton = this.getElement('#retry-button') as HTMLButtonElement;
   private readonly menuButton = this.getElement('#menu-button') as HTMLButtonElement;
+  private readonly joinButton = this.getElement('#join-button') as HTMLButtonElement;
+  private readonly serverUrlInput = this.getElement('#server-url') as HTMLInputElement;
+  private readonly matchModeSelect = this.getElement('#match-mode') as HTMLSelectElement;
+  private readonly multiplayerStatus = this.getElement('#multiplayer-status');
   private readonly coinBalance = this.getElement('#coin-balance');
   private readonly shopMessage = this.getElement('#shop-message');
   private readonly customizationGrid = this.getElement('#customization-grid');
@@ -152,7 +173,11 @@ export class Game {
     this.pauseButton.addEventListener('click', this.togglePause);
     this.retryButton.addEventListener('click', this.startGame);
     this.menuButton.addEventListener('click', this.returnToMenu);
+    this.joinButton.addEventListener('click', this.joinMultiplayer);
+    this.canvas.addEventListener('pointerdown', this.relockPointerFromCanvas);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    this.multiplayer.addEventListener('message', this.onMultiplayerMessage);
+    this.multiplayer.addEventListener('status', this.onMultiplayerStatus);
     this.renderCustomizationShop();
     this.applyProfile();
     resizeRenderer(this.renderer, this.camera, this.tuning.maxDpr);
@@ -170,7 +195,12 @@ export class Game {
     this.pauseButton.removeEventListener('click', this.togglePause);
     this.retryButton.removeEventListener('click', this.startGame);
     this.menuButton.removeEventListener('click', this.returnToMenu);
+    this.joinButton.removeEventListener('click', this.joinMultiplayer);
+    this.canvas.removeEventListener('pointerdown', this.relockPointerFromCanvas);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
+    this.multiplayer.removeEventListener('message', this.onMultiplayerMessage);
+    this.multiplayer.removeEventListener('status', this.onMultiplayerStatus);
+    this.multiplayer.disconnect();
     this.releasePointerLock();
     this.audio.dispose();
     this.debugTools.dispose();
@@ -193,14 +223,20 @@ export class Game {
       this.input.update(delta);
       this.player.update(delta, elapsed, this.input, this.tuning, ARENA);
       this.updatePlayerFire();
-      this.updateEnemies(delta);
+      if (this.multiplayerMode) {
+        this.updateMultiplayer(delta);
+      } else {
+        this.updateEnemies(delta);
+      }
       this.updatePlayerShots(delta);
       this.updateShots(delta);
-      this.updateRepairs(elapsed);
-      this.checkRepairPickups();
+      if (this.multiplayerMode !== 'deathmatch') {
+        this.updateRepairs(elapsed);
+        this.checkRepairPickups();
+      }
       this.updateCoins(elapsed);
       this.checkCoinPickups();
-      this.checkEnemyCrash();
+      if (!this.multiplayerMode) this.checkEnemyCrash();
       this.checkGroundCrash();
       this.audio.updatePropeller(speedRatio, this.input.isDashHeld());
     }
@@ -223,14 +259,68 @@ export class Game {
   }
 
   private readonly startGame = (): void => {
+    this.multiplayerMode = null;
+    this.multiplayer.disconnect();
+    this.clearRemotePlayers();
     this.resetMission();
     this.mode = 'playing';
-    this.input.setEnabled(true);
+    this.input.setEnabled(false);
     void this.audio.unlock().then(() => {
       if (this.mode === 'playing') this.audio.startPropeller();
     });
     this.requestPointerLock();
     this.syncShellState();
+  };
+
+  private readonly joinMultiplayer = (): void => {
+    const url = this.serverUrlInput.value.trim() || 'ws://localhost:8787';
+    const selectedMode = this.matchModeSelect.value as MultiplayerMode;
+    this.multiplayerStatus.textContent = '正在连接...';
+    this.multiplayer.connect(url, {
+      name: `玩家${Math.floor(Math.random() * 900 + 100)}`,
+      mode: selectedMode,
+      skin: this.profile.selectedSkin,
+    });
+  };
+
+  private readonly onMultiplayerStatus = (event: Event): void => {
+    this.multiplayerStatus.textContent = (event as CustomEvent<string>).detail;
+  };
+
+  private readonly onMultiplayerMessage = (event: Event): void => {
+    const message = (event as CustomEvent<MultiplayerEvent>).detail;
+    if (message.type === 'welcome') {
+      this.multiplayerMode = message.mode;
+      this.matchModeSelect.value = message.mode;
+      this.multiplayerStatus.textContent = `已进入 ${this.getModeLabel(message.mode)}，${message.maxPlayers} 人房间`;
+      this.resetMission();
+      this.mode = 'playing';
+      this.input.setEnabled(false);
+      this.setAiVisible(false);
+      this.setRepairsVisible(message.mode !== 'deathmatch');
+      void this.audio.unlock().then(() => {
+        if (this.mode === 'playing') this.audio.startPropeller();
+      });
+      this.requestPointerLock();
+      this.syncShellState();
+    } else if (message.type === 'snapshot') {
+      message.peers.forEach((peer) => this.upsertRemotePlayer(peer));
+    } else if (message.type === 'peer-joined' || message.type === 'state') {
+      this.upsertRemotePlayer(message.peer);
+    } else if (message.type === 'peer-left') {
+      this.removeRemotePlayer(message.id);
+    } else if (message.type === 'shot') {
+      this.spawnRemoteShot(message.origin, message.velocity);
+    } else if (message.type === 'hit') {
+      const remote = this.remotePlayers.get(message.targetId);
+      if (remote) {
+        remote.state.health = message.health;
+        remote.state.lives = message.lives;
+        this.updateRemoteHealth(remote);
+      }
+    } else if (message.type === 'full' || message.type === 'error') {
+      this.multiplayerStatus.textContent = message.message;
+    }
   };
 
   private readonly togglePause = (): void => {
@@ -241,7 +331,7 @@ export class Game {
       this.releasePointerLock();
     } else if (this.mode === 'paused') {
       this.mode = 'playing';
-      this.input.setEnabled(true);
+      this.input.setEnabled(false);
       void this.audio.unlock().then(() => {
         if (this.mode === 'playing') this.audio.startPropeller();
       });
@@ -250,7 +340,18 @@ export class Game {
     this.syncShellState();
   };
 
+  private readonly relockPointerFromCanvas = (event: PointerEvent): void => {
+    if (this.mode !== 'playing') return;
+    if (document.pointerLockElement === this.canvas) return;
+    event.preventDefault();
+    this.input.setEnabled(false);
+    this.requestPointerLock();
+  };
+
   private readonly returnToMenu = (): void => {
+    this.multiplayer.disconnect();
+    this.multiplayerMode = null;
+    this.clearRemotePlayers();
     this.resetMission();
     this.mode = 'menu';
     this.input.setEnabled(false);
@@ -258,6 +359,27 @@ export class Game {
     this.releasePointerLock();
     this.syncShellState();
   };
+
+  private getModeLabel(mode: MultiplayerMode): string {
+    if (mode === 'deathmatch') return '死亡竞赛';
+    if (mode === 'three-lives') return '三条命';
+    return '限时击杀';
+  }
+
+  private setAiVisible(visible: boolean): void {
+    for (const enemy of this.enemies) {
+      enemy.active = visible;
+      enemy.group.visible = visible;
+      enemy.respawnTimer = 0;
+    }
+  }
+
+  private setRepairsVisible(visible: boolean): void {
+    for (const repair of this.repairs) {
+      repair.active = visible;
+      repair.group.visible = visible;
+    }
+  }
 
   private readonly onPointerLockChange = (): void => {
     const locked = document.pointerLockElement === this.canvas;
@@ -282,9 +404,13 @@ export class Game {
       this.input.setEnabled(this.mode === 'playing');
       return;
     }
-    void this.canvas.requestPointerLock().catch(() => {
-      this.input.setEnabled(this.mode === 'playing');
-    });
+    const request = this.canvas.requestPointerLock();
+    if (request instanceof Promise) {
+      void request.catch(() => {
+        this.input.setEnabled(false);
+        this.syncShellState();
+      });
+    }
   }
 
   private releasePointerLock(): void {
@@ -542,6 +668,67 @@ export class Game {
     return group;
   }
 
+  private createRemotePlayer(peer: RemotePlayerState): RemotePlayer {
+    const skin = AIRCRAFT_SKINS[peer.skin] ?? AIRCRAFT_SKINS.standard;
+    const group = this.createPlaneModel(skin.body.color, skin.wing.color);
+    const bar = new THREE.Group();
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.08, 0.06),
+      new THREE.MeshBasicMaterial({ color: '#17191b' }),
+    );
+    const fill = new THREE.Mesh(
+      new THREE.BoxGeometry(1.42, 0.1, 0.07),
+      new THREE.MeshBasicMaterial({ color: '#48baa7' }),
+    );
+    fill.position.z = 0.01;
+    bar.position.set(0, 1.15, 0);
+    bar.add(back, fill);
+    group.add(bar);
+    this.world.add(group);
+    const remote = { group, healthFill: fill, state: peer };
+    this.updateRemotePlayerTransform(remote);
+    this.updateRemoteHealth(remote);
+    return remote;
+  }
+
+  private upsertRemotePlayer(peer: RemotePlayerState): void {
+    if (peer.id === this.multiplayer.id) return;
+    let remote = this.remotePlayers.get(peer.id);
+    if (!remote) {
+      remote = this.createRemotePlayer(peer);
+      this.remotePlayers.set(peer.id, remote);
+    }
+    remote.state = peer;
+    this.updateRemotePlayerTransform(remote);
+    this.updateRemoteHealth(remote);
+  }
+
+  private updateRemotePlayerTransform(remote: RemotePlayer): void {
+    remote.group.position.set(remote.state.position.x, remote.state.position.y, remote.state.position.z);
+    remote.group.rotation.set(remote.state.rotation.x, remote.state.rotation.y, remote.state.rotation.z);
+  }
+
+  private updateRemoteHealth(remote: RemotePlayer): void {
+    const healthRatio = THREE.MathUtils.clamp(remote.state.health / 10, 0, 1);
+    remote.healthFill.scale.x = Math.max(0.02, healthRatio);
+    remote.healthFill.position.x = -0.71 * (1 - healthRatio);
+    remote.healthFill.material.color.set(healthRatio > 0.45 ? '#48baa7' : '#ff6757');
+  }
+
+  private removeRemotePlayer(id: string): void {
+    const remote = this.remotePlayers.get(id);
+    if (!remote) return;
+    this.world.remove(remote.group);
+    disposeObject3D(remote.group);
+    this.remotePlayers.delete(id);
+  }
+
+  private clearRemotePlayers(): void {
+    for (const id of Array.from(this.remotePlayers.keys())) {
+      this.removeRemotePlayer(id);
+    }
+  }
+
   private createRepairPickups(): void {
     const positions = [
       [-30, 7, 18],
@@ -734,6 +921,21 @@ export class Game {
     this.shots.push({ mesh, velocity, age: 0 });
   }
 
+  private updateMultiplayer(delta: number): void {
+    this.multiplayerSendTimer -= delta;
+    if (!this.multiplayer.connected || this.multiplayerSendTimer > 0) return;
+    this.multiplayerSendTimer = 0.05;
+    this.multiplayer.sendState({
+      skin: this.profile.selectedSkin,
+      position: this.toNetworkVector(this.player.group.position),
+      rotation: {
+        x: this.player.group.rotation.x,
+        y: this.player.group.rotation.y,
+        z: this.player.group.rotation.z,
+      },
+    });
+  }
+
   private updatePlayerFire(): void {
     if (!this.input.isFireHeld() || this.fireCooldown > 0) return;
 
@@ -747,14 +949,39 @@ export class Game {
     mesh.position.copy(muzzle);
     this.world.add(mesh);
 
-    const bulletSpeed = 46;
+    const bulletSpeed = 68;
     this.playerShots.push({
       mesh,
       velocity: forward.multiplyScalar(bulletSpeed),
       age: 0,
     });
+    if (this.multiplayerMode && this.multiplayer.connected) {
+      this.multiplayer.sendShot(this.toNetworkVector(muzzle), this.toNetworkVector(this.playerShots[this.playerShots.length - 1].velocity));
+    }
     this.audio.shoot();
     this.fireCooldown = 0.13;
+  }
+
+  private spawnRemoteShot(origin: NetworkVector, velocity: NetworkVector): void {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 10, 8),
+      new THREE.MeshBasicMaterial({ color: '#ffef8a' }),
+    );
+    mesh.position.set(origin.x, origin.y, origin.z);
+    this.world.add(mesh);
+    this.shots.push({
+      mesh,
+      velocity: new THREE.Vector3(velocity.x, velocity.y, velocity.z),
+      age: 0,
+    });
+  }
+
+  private toNetworkVector(vector: THREE.Vector3): NetworkVector {
+    return {
+      x: Number(vector.x.toFixed(3)),
+      y: Number(vector.y.toFixed(3)),
+      z: Number(vector.z.toFixed(3)),
+    };
   }
 
   private updatePlayerShots(delta: number): void {
@@ -763,9 +990,11 @@ export class Game {
       shot.age += delta;
       shot.mesh.position.addScaledVector(shot.velocity, delta);
 
-      const enemy = this.enemies.find((candidate) => {
-        return candidate.active && candidate.group.position.distanceToSquared(shot.mesh.position) < 1.4 * 1.4;
-      });
+      const enemy = this.multiplayerMode
+        ? undefined
+        : this.enemies.find((candidate) => {
+            return candidate.active && candidate.group.position.distanceToSquared(shot.mesh.position) < 1.4 * 1.4;
+          });
 
       if (enemy) {
         this.destroyEnemy(enemy);
@@ -773,10 +1002,33 @@ export class Game {
         this.addCoins(COIN_REWARDS.aiKill, '击落');
         this.audio.pickup(5);
         this.removePlayerShot(index);
+      } else if (this.multiplayerMode && this.checkRemotePlayerHit(shot.mesh.position)) {
+        this.hud.flashTargetHit();
+        this.audio.pickup(5);
+        this.removePlayerShot(index);
       } else if (shot.age > 2.2) {
         this.removePlayerShot(index);
       }
     }
+  }
+
+  private checkRemotePlayerHit(position: THREE.Vector3): boolean {
+    for (const remote of this.remotePlayers.values()) {
+      if (remote.state.health <= 0) continue;
+      if (remote.group.position.distanceToSquared(position) >= 1.45 * 1.45) continue;
+      remote.state.health = Math.max(0, remote.state.health - 1);
+      this.updateRemoteHealth(remote);
+      this.multiplayer.sendHit(remote.state.id);
+      if (remote.state.health === 0) {
+        this.createExplosion(remote.group.position, '#ff8a35');
+        remote.group.visible = false;
+        window.setTimeout(() => {
+          remote.group.visible = true;
+        }, 1800);
+      }
+      return true;
+    }
+    return false;
   }
 
   private updateShots(delta: number): void {
@@ -1069,6 +1321,11 @@ export class Game {
       damage: Math.round((this.hits / this.maxHits) * 100),
       playerShots: this.playerShots.length,
       coinPickups: this.coins.filter((coin) => coin.active).length,
+      multiplayer: {
+        connected: this.multiplayer.connected,
+        mode: this.multiplayerMode,
+        peers: this.remotePlayers.size,
+      },
       player: {
         position: {
           x: this.player.group.position.x,

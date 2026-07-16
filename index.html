@@ -18,6 +18,19 @@
             <strong id="coin-balance">0</strong>
           </div>
           <button id="start-button" type="button">开始单人</button>
+          <section id="multiplayer-panel" aria-label="局域网联机">
+            <h2>局域网联机</h2>
+            <div id="multiplayer-controls">
+              <select id="match-mode" aria-label="玩法">
+                <option value="deathmatch">死亡竞赛</option>
+                <option value="three-lives">三条命</option>
+                <option value="timed-kills">限时击杀</option>
+              </select>
+              <input id="server-url" type="text" value="ws://localhost:8787" aria-label="服务器地址" />
+              <button id="join-button" type="button">加入</button>
+            </div>
+            <p id="multiplayer-status">开服务器：npm run lan-server -- --port 8787</p>
+          </section>
           <section id="customization-shop" aria-label="飞机皮肤">
             <h2>飞机皮肤</h2>
             <p id="shop-message">用金币购买整架飞机皮肤，买过以后可以免费切换。</p>

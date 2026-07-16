@@ -12,6 +12,11 @@ interface ThreeGameDiagnostics {
   damage: number;
   playerShots?: number;
   coinPickups?: number;
+  multiplayer?: {
+    connected: boolean;
+    mode: 'deathmatch' | 'three-lives' | 'timed-kills' | null;
+    peers: number;
+  };
   player: {
     position: { x: number; y: number; z: number };
     speed: number;
