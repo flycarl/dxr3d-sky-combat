@@ -58,7 +58,13 @@ export class MultiplayerClient extends EventTarget {
   connect(url: string, options: JoinOptions): void {
     this.disconnect();
     this.closingExpected = false;
-    const socket = new WebSocket(url);
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(url);
+    } catch (error) {
+      this.dispatchEvent(new CustomEvent('status', { detail: this.describeConnectionError(url, error) }));
+      return;
+    }
     this.socket = socket;
 
     socket.addEventListener('open', () => {
@@ -76,19 +82,21 @@ export class MultiplayerClient extends EventTarget {
       try {
         const payload = JSON.parse(String(event.data)) as MultiplayerEvent;
         if (payload.type === 'welcome') this.id = payload.id;
+        if (payload.type === 'full' || payload.type === 'error') this.closingExpected = true;
         this.dispatchEvent(new CustomEvent('message', { detail: payload }));
       } catch {
         this.dispatchEvent(new CustomEvent('status', { detail: '收到无法解析的联机数据' }));
       }
     });
 
-    socket.addEventListener('close', () => {
+    socket.addEventListener('close', (event) => {
       if (this.closingExpected) return;
-      this.dispatchEvent(new CustomEvent('status', { detail: '联机已断开' }));
+      const reason = event.reason ? `：${event.reason}` : '';
+      this.dispatchEvent(new CustomEvent('status', { detail: `联机已断开${reason}` }));
     });
 
     socket.addEventListener('error', () => {
-      this.dispatchEvent(new CustomEvent('status', { detail: '联机连接失败' }));
+      this.dispatchEvent(new CustomEvent('status', { detail: this.describeConnectionError(url) }));
     });
   }
 
@@ -115,5 +123,16 @@ export class MultiplayerClient extends EventTarget {
   private send(payload: object): void {
     if (!this.connected) return;
     this.socket?.send(JSON.stringify(payload));
+  }
+
+  private describeConnectionError(url: string, error?: unknown): string {
+    if (window.location.protocol === 'https:' && url.startsWith('ws://')) {
+      return '线上 HTTPS 页面不能连 ws://。请用本地 http://电脑IP:5174 打开游戏';
+    }
+    if (url.includes('localhost') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return '服务器地址不能用 localhost，请填开服电脑的 ws://电脑IP:8787';
+    }
+    if (error instanceof Error && error.message) return `联机连接失败：${error.message}`;
+    return '联机连接失败，请确认服务器已开启、地址和端口正确';
   }
 }

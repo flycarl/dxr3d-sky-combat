@@ -80,6 +80,7 @@ export class Player {
   private readonly propeller = new THREE.Group();
 
   constructor() {
+    this.group.rotation.order = 'YXZ';
     const fuselage = new THREE.Mesh(this.fuselageGeometry, this.bodyMaterial);
     fuselage.rotation.x = Math.PI / 2;
     fuselage.castShadow = true;
@@ -226,7 +227,7 @@ export class Player {
 
   reset(position = new THREE.Vector3(0, 8, 18)): void {
     this.group.position.copy(position);
-    this.group.rotation.set(0, 0, 0);
+    this.group.rotation.set(0, 0, 0, 'YXZ');
     this.speed = 8;
     this.velocity.set(0, 0, -this.speed);
     this.boostEnergy = 1;

@@ -171,6 +171,7 @@ export class Game {
     this.resetMission();
     this.mode = 'menu';
     this.input.setEnabled(false);
+    this.serverUrlInput.value = this.getDefaultServerUrl();
     this.startButton.addEventListener('click', this.startGame);
     this.pauseButton.addEventListener('click', this.togglePause);
     this.retryButton.addEventListener('click', this.startGame);
@@ -277,7 +278,7 @@ export class Game {
   };
 
   private readonly createMultiplayerRoom = (): void => {
-    const url = this.serverUrlInput.value.trim() || 'ws://localhost:8787';
+    const url = this.getServerUrl();
     const selectedMode = this.matchModeSelect.value as MultiplayerMode;
     this.multiplayerStatus.textContent = '正在创建房间...';
     this.multiplayer.connect(url, {
@@ -289,7 +290,7 @@ export class Game {
   };
 
   private readonly joinMultiplayerRoom = (): void => {
-    const url = this.serverUrlInput.value.trim() || 'ws://localhost:8787';
+    const url = this.getServerUrl();
     const selectedMode = this.matchModeSelect.value as MultiplayerMode;
     const roomCode = this.inviteCodeInput.value.trim().toUpperCase();
     if (roomCode.length !== 4) {
@@ -310,6 +311,18 @@ export class Game {
   private readonly onMultiplayerStatus = (event: Event): void => {
     this.multiplayerStatus.textContent = (event as CustomEvent<string>).detail;
   };
+
+  private getServerUrl(): string {
+    const value = this.serverUrlInput.value.trim() || this.getDefaultServerUrl();
+    this.serverUrlInput.value = value;
+    return value;
+  }
+
+  private getDefaultServerUrl(): string {
+    const host = window.location.hostname;
+    if (!host || host === 'flycarl.github.io') return 'ws://localhost:8787';
+    return `ws://${host}:8787`;
+  }
 
   private readonly onMultiplayerMessage = (event: Event): void => {
     const message = (event as CustomEvent<MultiplayerEvent>).detail;
