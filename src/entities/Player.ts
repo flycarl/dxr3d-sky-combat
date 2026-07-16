@@ -152,7 +152,8 @@ export class Player {
     this.updateBodyEmissive();
 
     const bank = -steering * Math.min(speedRatio, 1.15) * 1.18;
-    const pitch = THREE.MathUtils.clamp(throttle * 0.46, -0.42, 0.5);
+    const climbIntent = THREE.MathUtils.clamp(climb / 5.4, -1, 1);
+    const pitch = THREE.MathUtils.clamp(climbIntent * 0.46, -0.42, 0.5);
     this.group.rotation.z = THREE.MathUtils.lerp(this.group.rotation.z, bank, 1 - Math.exp(-delta * 8.5));
     this.group.rotation.x = THREE.MathUtils.lerp(this.group.rotation.x, pitch, 1 - Math.exp(-delta * 8.5));
     this.forward.set(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
