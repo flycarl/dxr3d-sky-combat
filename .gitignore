@@ -3,5 +3,6 @@ dist/
 test-results/
 artifacts/
 .worktrees/
+.superpowers/
 *.log
 .DS_Store
