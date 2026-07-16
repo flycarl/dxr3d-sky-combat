@@ -280,12 +280,16 @@ export class Game {
   private readonly createMultiplayerRoom = (): void => {
     const url = this.getServerUrl();
     const selectedMode = this.matchModeSelect.value as MultiplayerMode;
+    const roomCode = this.promptForRoomCode();
+    if (!roomCode) return;
+    this.inviteCodeInput.value = roomCode;
     this.multiplayerStatus.textContent = '正在创建房间...';
     this.multiplayer.connect(url, {
       action: 'create',
       name: `玩家${Math.floor(Math.random() * 900 + 100)}`,
       mode: selectedMode,
       skin: this.profile.selectedSkin,
+      roomCode,
     });
   };
 
@@ -322,6 +326,27 @@ export class Game {
     const host = window.location.hostname;
     if (!host || host === 'flycarl.github.io') return 'ws://localhost:8787';
     return `ws://${host}:8787`;
+  }
+
+  private promptForRoomCode(): string | null {
+    const suggested = this.inviteCodeInput.value.trim().toUpperCase() || this.makeSuggestedRoomCode();
+    const roomCode = window.prompt('请输入邀请码', suggested);
+    if (roomCode === null) return null;
+    const normalized = roomCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(normalized)) {
+      this.multiplayerStatus.textContent = '邀请码要输入 4 位字母或数字';
+      return null;
+    }
+    return normalized;
+  }
+
+  private makeSuggestedRoomCode(): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let index = 0; index < 4; index += 1) {
+      code += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    return code;
   }
 
   private readonly onMultiplayerMessage = (event: Event): void => {

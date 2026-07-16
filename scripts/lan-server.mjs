@@ -50,6 +50,10 @@ function makeRoomCode() {
   throw new Error('无法生成房间邀请码');
 }
 
+function normalizeRoomCode(value) {
+  return String(value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+}
+
 function send(socket, payload) {
   if (socket.readyState !== socket.OPEN) return;
   socket.send(JSON.stringify(payload));
@@ -148,9 +152,19 @@ wss.on('connection', (socket) => {
       nextId += 1;
       const roomCode =
         message.type === 'create-room'
-          ? makeRoomCode()
-          : String(message.roomCode ?? '').trim().toUpperCase();
+          ? normalizeRoomCode(message.roomCode) || makeRoomCode()
+          : normalizeRoomCode(message.roomCode);
+      if (roomCode.length !== 4) {
+        send(socket, { type: 'error', message: '请输入 4 位邀请码' });
+        socket.close();
+        return;
+      }
       if (message.type === 'create-room') {
+        if (rooms.has(roomCode)) {
+          send(socket, { type: 'error', message: '这个邀请码已经被用了' });
+          socket.close();
+          return;
+        }
         rooms.set(roomCode, {
           code: roomCode,
           mode: message.mode ?? 'deathmatch',

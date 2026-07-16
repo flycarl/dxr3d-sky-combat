@@ -127,12 +127,12 @@ export class MultiplayerClient extends EventTarget {
 
   private describeConnectionError(url: string, error?: unknown): string {
     if (window.location.protocol === 'https:' && url.startsWith('ws://')) {
-      return '线上 HTTPS 页面不能连 ws://。请用本地 http://电脑IP:5174 打开游戏';
+      return '请从开服电脑给你的游戏地址进入，再创建或加入房间';
     }
     if (url.includes('localhost') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return '服务器地址不能用 localhost，请填开服电脑的 ws://电脑IP:8787';
+      return '请打开开服电脑给你的游戏地址，不要直接打开线上页面';
     }
-    if (error instanceof Error && error.message) return `联机连接失败：${error.message}`;
-    return '联机连接失败，请确认服务器已开启、地址和端口正确';
+    if (error instanceof Error && error.message) return '创建或加入失败，请确认房主已经开服';
+    return '创建或加入失败，请确认房主已经开服';
   }
 }
