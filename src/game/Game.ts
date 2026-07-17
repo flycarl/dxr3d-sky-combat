@@ -13,6 +13,7 @@ import { DebugTools, type DebugTuning } from '../systems/DebugTools';
 import { Hud } from '../systems/Hud';
 import {
   COIN_REWARDS,
+  PROFILE_STORAGE_KEY,
   awardCoins,
   loadProfile,
   saveProfile,
@@ -181,6 +182,8 @@ export class Game {
     this.joinRoomButton.addEventListener('click', this.joinMultiplayerRoom);
     this.canvas.addEventListener('pointerdown', this.relockPointerFromCanvas);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    window.addEventListener('storage', this.onProfileStorageChange);
     this.multiplayer.addEventListener('message', this.onMultiplayerMessage);
     this.multiplayer.addEventListener('status', this.onMultiplayerStatus);
     this.renderCustomizationShop();
@@ -204,6 +207,8 @@ export class Game {
     this.joinRoomButton.removeEventListener('click', this.joinMultiplayerRoom);
     this.canvas.removeEventListener('pointerdown', this.relockPointerFromCanvas);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    window.removeEventListener('storage', this.onProfileStorageChange);
     this.multiplayer.removeEventListener('message', this.onMultiplayerMessage);
     this.multiplayer.removeEventListener('status', this.onMultiplayerStatus);
     this.multiplayer.disconnect();
@@ -394,6 +399,9 @@ export class Game {
     } else if (message.type === 'shot') {
       this.spawnRemoteShot(message.origin, message.velocity);
     } else if (message.type === 'hit') {
+      if (message.attackerId === this.multiplayer.id && message.targetId !== this.multiplayer.id && message.health === 0) {
+        this.addCoins(COIN_REWARDS.playerKill, '击落玩家');
+      }
       const remote = this.remotePlayers.get(message.targetId);
       if (remote) {
         remote.state.health = message.health;
@@ -507,11 +515,26 @@ export class Game {
     this.app.classList.toggle('is-paused', this.mode === 'paused');
   }
 
-  private applyProfile(): void {
+  private readonly onProfileStorageChange = (event: StorageEvent): void => {
+    if (event.key !== null && event.key !== PROFILE_STORAGE_KEY) return;
+    this.reloadProfileFromStorage();
+  };
+
+  private readonly onVisibilityChange = (): void => {
+    if (document.visibilityState === 'visible') this.reloadProfileFromStorage();
+  };
+
+  private reloadProfileFromStorage(): void {
+    this.profile = loadProfile();
+    this.applyProfile(false);
+    this.syncSkinButtons();
+  }
+
+  private applyProfile(persist = true): void {
     this.player.applySkin(this.profile.selectedSkin);
     this.coinBalance.textContent = String(this.profile.coins);
     this.hud.setCoins(this.profile.coins);
-    saveProfile(this.profile);
+    if (persist) saveProfile(this.profile);
   }
 
   private addCoins(amount: number, label: string): void {

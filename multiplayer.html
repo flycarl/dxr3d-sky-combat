@@ -6,20 +6,20 @@
     <meta name="theme-color" content="#111619" />
     <title>天空空战联机版</title>
   </head>
-  <body>
+  <body data-edition="multiplayer">
     <main id="app">
-      <canvas id="game-canvas" aria-label="可游玩的 3D 飞机空战画布"></canvas>
+      <canvas id="game-canvas" aria-label="可游玩的 3D 飞机空战联机版画布"></canvas>
       <section id="start-screen">
         <h1>天空空战联机版</h1>
-        <p>点击开始后鼠标会像射击游戏一样锁定。移动圆圈操控飞机，用准心开火；可单人作战，也可同一 Wi-Fi 用邀请码三人联机。</p>
+        <p>同一 Wi-Fi 打开房主给的链接，用 4 位邀请码创建或加入三人空战；金币和皮肤与单人版共用存档。</p>
         <div id="menu-panel">
           <div id="coin-card">
             <span>金币</span>
             <strong id="coin-balance">0</strong>
           </div>
-          <button id="start-button" type="button">开始单人</button>
+          <button id="start-button" type="button">单人练习</button>
           <section id="multiplayer-panel" aria-label="局域网联机">
-            <h2>局域网联机</h2>
+            <h2>创建或加入房间</h2>
             <div id="multiplayer-controls">
               <select id="match-mode" aria-label="玩法">
                 <option value="deathmatch">死亡竞赛</option>
@@ -31,11 +31,11 @@
               <button id="join-room-button" type="button">加入房间</button>
               <input id="server-url" type="hidden" value="" aria-hidden="true" />
             </div>
-            <p id="multiplayer-status">创建房间后，把邀请码告诉朋友。</p>
+            <p id="multiplayer-status">房主创建房间后，把邀请码告诉朋友。</p>
           </section>
           <section id="customization-shop" aria-label="飞机皮肤">
             <h2>飞机皮肤</h2>
-            <p id="shop-message">用金币购买整架飞机皮肤，买过以后可以免费切换。</p>
+            <p id="shop-message">金币与单人版同步。买过的整机皮肤可以免费切换。</p>
             <div id="customization-grid"></div>
           </section>
         </div>

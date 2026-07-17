@@ -158,6 +158,40 @@ test('skin shop reports insufficient funds and persists owned skins', async ({ p
   await expect(tealSkin).toHaveClass(/is-selected/);
 });
 
+test('multiplayer edition shares the same coin and skin profile', async ({ context, page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'dxr3d-player-profile-v1',
+      JSON.stringify({
+        coins: 240,
+        selectedSkin: 'stealth',
+        ownedSkins: ['standard', 'stealth'],
+      }),
+    );
+  });
+
+  const multiplayerPage = await context.newPage();
+  await multiplayerPage.goto('/dxr3d-sky-combat/multiplayer.html');
+  await expect(multiplayerPage.locator('#start-screen h1')).toHaveText('天空空战联机版');
+  await expect(multiplayerPage.locator('#coin-balance')).toHaveText('240');
+  await expect(multiplayerPage.locator('.style-button[data-skin="stealth"]')).toHaveClass(/is-selected/);
+
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'dxr3d-player-profile-v1',
+      JSON.stringify({
+        coins: 315,
+        selectedSkin: 'gold',
+        ownedSkins: ['standard', 'stealth', 'gold'],
+      }),
+    );
+  });
+
+  await expect(multiplayerPage.locator('#coin-balance')).toHaveText('315');
+  await expect(multiplayerPage.locator('.style-button[data-skin="gold"]')).toHaveClass(/is-selected/);
+});
+
 test('starts with an in-memory profile when localStorage writes fail', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Storage.prototype, 'setItem', {
