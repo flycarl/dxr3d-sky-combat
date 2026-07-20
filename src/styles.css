@@ -194,7 +194,7 @@ body {
 
 #customization-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(126px, 1fr));
+  grid-template-columns: repeat(4, minmax(154px, 1fr));
   gap: 8px;
 }
 
@@ -213,12 +213,32 @@ body {
   grid-template-columns: 18px 1fr auto;
   gap: 7px;
   align-items: center;
-  min-height: 36px;
-  padding: 6px 8px;
+  min-height: 48px;
+  padding: 7px 8px;
   border: 1px solid rgba(244, 240, 223, 0.18);
   color: #f4f0df;
   background: rgba(8, 12, 14, 0.52);
   font-weight: 800;
+}
+
+.aircraft-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+.aircraft-copy strong {
+  overflow: hidden;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aircraft-category {
+  color: rgba(244, 240, 223, 0.66);
+  font-size: 0.62rem;
+  font-weight: 700;
 }
 
 .style-button.is-selected {
@@ -269,7 +289,7 @@ body {
   right: max(112px, env(safe-area-inset-right));
   left: max(14px, env(safe-area-inset-left));
   display: grid;
-  grid-template-columns: repeat(6, minmax(76px, 112px)) minmax(112px, 1fr) minmax(140px, auto);
+  grid-template-columns: repeat(7, minmax(76px, 112px)) minmax(112px, 1fr) minmax(140px, auto);
   gap: 8px;
   align-items: start;
   pointer-events: none;
@@ -298,6 +318,7 @@ body {
 
 #app:not(.has-started) #hud,
 #app:not(.has-started) #pause-button,
+#app:not(.has-started) #kill-feed,
 #app:not(.is-active) #reticle,
 #app:not(.is-active) #weapon-crosshair {
   display: none;
@@ -364,6 +385,10 @@ body {
   border-left-color: #f1d97a;
 }
 
+.missile-meter {
+  border-left-color: #ff6757;
+}
+
 #reward-flash {
   position: absolute;
   top: calc(100% + 8px);
@@ -376,6 +401,37 @@ body {
   font-weight: 900;
   white-space: nowrap;
   opacity: 0;
+}
+
+#kill-feed {
+  position: absolute;
+  top: max(84px, calc(env(safe-area-inset-top) + 84px));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  width: min(360px, calc(100vw - 28px));
+  pointer-events: none;
+}
+
+.kill-feed-item {
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-left: 3px solid #e23d2f;
+  background: rgba(8, 12, 14, 0.74);
+  color: #f4f0df;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.18;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  animation: kill-feed-enter 180ms ease-out;
+}
+
+.kill-feed-item.is-fading {
+  animation: kill-feed-exit 380ms ease-in forwards;
 }
 
 #game-overlay {
@@ -410,6 +466,24 @@ body {
   color: rgba(244, 240, 223, 0.78);
   font-weight: 800;
   text-transform: uppercase;
+}
+
+#game-overlay p.is-report {
+  display: grid;
+  gap: 6px;
+  min-width: min(420px, calc(100vw - 44px));
+  padding: 12px 14px;
+  border: 1px solid rgba(244, 240, 223, 0.2);
+  background: rgba(14, 21, 24, 0.72);
+  text-align: left;
+  text-transform: none;
+}
+
+#game-overlay p.is-report span {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 #overlay-actions {
@@ -645,6 +719,24 @@ body {
   }
   100% {
     transform: translateX(-50%) rotate(0deg) scaleY(1);
+  }
+}
+
+@keyframes kill-feed-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes kill-feed-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-5px);
   }
 }
 

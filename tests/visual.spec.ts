@@ -55,7 +55,10 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
   await page.goto('/');
   await expect(page.locator('#coin-balance')).toBeVisible();
   await expect(page.locator('#customization-shop')).toBeVisible();
-  await expect(page.locator('#customization-grid .style-button')).toHaveCount(5);
+  await expect(page.locator('#customization-grid .style-button')).toHaveCount(8);
+  await expect(page.locator('.style-button[data-skin="warbird"]')).toContainText('二战');
+  await expect(page.locator('.style-button[data-skin="jet"]')).toContainText('喷气');
+  await expect(page.locator('.style-button[data-skin="heavy"]')).toContainText('攻击');
   await expect(page.locator('#shop-message')).toContainText('金币');
 
   await page.evaluate(() => {
@@ -73,8 +76,12 @@ test('renders a nonblank interactive game canvas', async ({ page }, testInfo) =>
 
   await page.locator('.style-button[data-skin="teal"]').click();
   await expect(page.locator('#coin-balance')).toHaveText('180');
-  await expect(page.locator('#shop-message')).toContainText('已购买并使用 青色发光机');
+  await expect(page.locator('#shop-message')).toContainText('已购买并使用 青色未来战机');
 
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('飞行员名字');
+    await dialog.accept('云雀');
+  });
   await page.locator('#start-button').click();
   await expect(page.locator('#game-canvas')).toBeVisible();
   await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
@@ -145,13 +152,13 @@ test('skin shop reports insufficient funds and persists owned skins', async ({ p
 
   await tealSkin.click();
   await expect(page.locator('#coin-balance')).toHaveText('180');
-  await expect(page.locator('#shop-message')).toContainText('已购买并使用 青色发光机');
+  await expect(page.locator('#shop-message')).toContainText('已购买并使用 青色未来战机');
   await page.locator('.style-button[data-skin="standard"]').click();
   await expect(page.locator('#coin-balance')).toHaveText('180');
-  await expect(page.locator('#shop-message')).toContainText('已切换到 蓝色双翼机');
+  await expect(page.locator('#shop-message')).toContainText('已切换到 经典蓝色双翼机');
   await tealSkin.click();
   await expect(page.locator('#coin-balance')).toHaveText('180');
-  await expect(page.locator('#shop-message')).toContainText('已切换到 青色发光机');
+  await expect(page.locator('#shop-message')).toContainText('已切换到 青色未来战机');
 
   await page.reload();
   await expect(page.locator('#coin-balance')).toHaveText('180');
@@ -192,6 +199,19 @@ test('multiplayer edition shares the same coin and skin profile', async ({ conte
   await expect(multiplayerPage.locator('.style-button[data-skin="gold"]')).toHaveClass(/is-selected/);
 });
 
+test('start prompt saves the pilot name into the shared profile', async ({ page }) => {
+  await page.goto('/');
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('飞行员名字');
+    await dialog.accept('长空一号');
+  });
+  await page.locator('#start-button').click();
+  await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
+
+  const profile = await page.evaluate(() => JSON.parse(window.localStorage.getItem('dxr3d-player-profile-v1') ?? '{}'));
+  expect(profile.playerName).toBe('长空一号');
+});
+
 test('starts with an in-memory profile when localStorage writes fail', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Storage.prototype, 'setItem', {
@@ -204,6 +224,9 @@ test('starts with an in-memory profile when localStorage writes fail', async ({ 
 
   await page.goto('/');
   await expect(page.locator('#coin-balance')).toHaveText('0');
+  page.once('dialog', async (dialog) => {
+    await dialog.accept('存储失败也能飞');
+  });
   await page.locator('#start-button').click();
   await page.waitForFunction(() => (window.__THREE_GAME_DIAGNOSTICS__?.frame ?? 0) > 10);
 });

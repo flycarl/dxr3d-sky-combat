@@ -1,4 +1,5 @@
 import './styles.css';
+import { createAircraftModelCatalog } from './entities/AircraftModelFactory';
 import { Game } from './game/Game';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas');
@@ -8,6 +9,7 @@ if (!canvas) {
 }
 
 const game = new Game(canvas);
+window.__AIRCRAFT_MODEL_CATALOG__ = createAircraftModelCatalog();
 game.start();
 
 if (import.meta.hot) {

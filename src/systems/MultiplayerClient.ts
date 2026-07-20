@@ -1,6 +1,7 @@
 import type { AircraftSkinId } from './Customization';
 
 export type MultiplayerMode = 'deathmatch' | 'three-lives' | 'timed-kills';
+export type HitWeapon = 'bullet' | 'missile';
 
 export type NetworkVector = {
   x: number;
@@ -21,7 +22,7 @@ export type MultiplayerEvent =
   | { type: 'peer-left'; id: string }
   | { type: 'state'; peer: RemotePlayerState }
   | { type: 'shot'; id: string; origin: NetworkVector; velocity: NetworkVector }
-  | { type: 'hit'; attackerId: string; targetId: string; health: number; lives: number }
+  | { type: 'hit'; attackerId: string; targetId: string; health: number; lives: number; damage?: number; weapon?: HitWeapon }
   | { type: 'score'; scores: Record<string, number> }
   | { type: 'full'; message: string }
   | { type: 'error'; message: string };
@@ -109,8 +110,8 @@ export class MultiplayerClient extends EventTarget {
     this.send({ type: 'shot', origin, velocity });
   }
 
-  sendHit(targetId: string): void {
-    this.send({ type: 'hit', targetId });
+  sendHit(targetId: string, damage = 1, weapon: HitWeapon = 'bullet'): void {
+    this.send({ type: 'hit', targetId, damage, weapon });
   }
 
   disconnect(): void {

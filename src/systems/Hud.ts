@@ -6,9 +6,11 @@ export class Hud {
   private readonly altitudeValue = this.getElement('#altitude-value');
   private readonly damageValue = this.getElement('#damage-value');
   private readonly hudCoinValue = this.getElement('#hud-coin-value');
+  private readonly missileCooldownValue = this.getElement('#missile-cooldown-value');
   private readonly boostFill = this.getElement('#boost-fill');
   private readonly statusLine = this.getElement('#status-line');
   private readonly rewardFlash = this.getElement('#reward-flash');
+  private readonly killFeed = this.getElement('#kill-feed');
   private readonly overlay = this.getElement('#game-overlay');
   private readonly overlayTitle = this.getElement('#overlay-title');
   private readonly overlayText = this.getElement('#overlay-text');
@@ -38,6 +40,22 @@ export class Hud {
     );
   }
 
+  addKillFeed(text: string): void {
+    const item = document.createElement('div');
+    item.className = 'kill-feed-item';
+    item.textContent = text;
+    this.killFeed.prepend(item);
+    while (this.killFeed.children.length > 5) {
+      this.killFeed.lastElementChild?.remove();
+    }
+    window.setTimeout(() => {
+      item.classList.add('is-fading');
+    }, 3600);
+    window.setTimeout(() => {
+      item.remove();
+    }, 4100);
+  }
+
   update(state: {
     gates: number;
     target: number;
@@ -46,7 +64,10 @@ export class Hud {
     altitude: number;
     boost: number;
     damage: number;
+    missileCooldown: number;
+    multiplayerMode: 'deathmatch' | 'three-lives' | 'timed-kills' | null;
     mode: 'menu' | 'playing' | 'paused' | 'won' | 'lost';
+    deathReport?: string[];
   }): void {
     this.gateValue.textContent = String(state.gates);
     this.targetValue.textContent = String(state.target);
@@ -56,6 +77,8 @@ export class Hud {
     this.speedValue.textContent = state.speed.toString().padStart(3, '0');
     this.altitudeValue.textContent = state.altitude.toString().padStart(3, '0');
     this.damageValue.textContent = `${state.damage}%`;
+    this.missileCooldownValue.textContent =
+      state.multiplayerMode === null ? '联机' : state.missileCooldown <= 0 ? '就绪' : `${Math.ceil(state.missileCooldown)}s`;
     this.boostFill.style.transform = `scaleX(${state.boost.toFixed(3)})`;
 
     if (state.mode === 'menu') {
@@ -66,7 +89,7 @@ export class Hud {
       this.showOverlay('任务完成', '返回主菜单后可再来一局');
     } else if (state.mode === 'lost') {
       this.statusLine.textContent = '飞机坠毁';
-      this.showOverlay('坠机', '选择下一步');
+      this.showOverlay('死亡报告', state.deathReport?.length ? state.deathReport : ['选择下一步']);
       this.overlay.classList.add('is-lost');
     } else if (state.mode === 'paused') {
       this.statusLine.textContent = '已暂停';
@@ -139,9 +162,20 @@ export class Hud {
     );
   }
 
-  private showOverlay(title: string, text: string): void {
+  private showOverlay(title: string, text: string | string[]): void {
     this.overlayTitle.textContent = title;
-    this.overlayText.textContent = text;
+    this.overlayText.replaceChildren();
+    if (Array.isArray(text)) {
+      this.overlayText.classList.add('is-report');
+      text.forEach((line) => {
+        const item = document.createElement('span');
+        item.textContent = line;
+        this.overlayText.append(item);
+      });
+    } else {
+      this.overlayText.classList.remove('is-report');
+      this.overlayText.textContent = text;
+    }
     this.overlay.classList.add('is-visible');
   }
 

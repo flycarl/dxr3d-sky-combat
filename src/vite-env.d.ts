@@ -11,6 +11,8 @@ interface ThreeGameDiagnostics {
   timeLeft: number;
   damage: number;
   playerShots?: number;
+  homingMissiles?: number;
+  missileCooldown?: number;
   coinPickups?: number;
   multiplayer?: {
     connected: boolean;
@@ -20,6 +22,9 @@ interface ThreeGameDiagnostics {
   player: {
     position: { x: number; y: number; z: number };
     speed: number;
+    aircraftId: string;
+    aircraftRecipe: string;
+    propulsion: 'propeller' | 'jet';
   };
   renderer: {
     calls: number;
@@ -38,4 +43,11 @@ interface ThreeGameDiagnostics {
 
 interface Window {
   __THREE_GAME_DIAGNOSTICS__?: ThreeGameDiagnostics;
+  __AIRCRAFT_MODEL_CATALOG__?: Array<{
+    id: string;
+    recipe: string;
+    meshes: number;
+    propellers: number;
+    exhausts: number;
+  }>;
 }

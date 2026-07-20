@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { InputController } from '../core/InputController';
-import { AIRCRAFT_SKINS, applyMaterialStyle, type AircraftSkinId } from '../systems/Customization';
+import { createAircraftModel, type AircraftModel } from './AircraftModelFactory';
+import { AIRCRAFT_SKINS, type AircraftSkinId } from '../systems/Customization';
 
 export type PlayerTuning = {
   maxSpeed: number;
@@ -30,128 +31,15 @@ export class Player {
   private hitFlash = 0;
   private propellerSpin = 0;
 
-  private readonly bodyMaterial = new THREE.MeshStandardMaterial({
-    color: '#f05b3f',
-    roughness: 0.34,
-    metalness: 0.22,
-  });
-  private readonly bodyBaseEmissive = this.bodyMaterial.emissive.clone();
-  private bodyBaseEmissiveIntensity = this.bodyMaterial.emissiveIntensity;
-  private readonly impactEmissive = new THREE.Color('#5b120c');
-  private readonly leftWingMaterial = new THREE.MeshStandardMaterial({
-    color: '#48d6c5',
-    roughness: 0.28,
-    metalness: 0.26,
-    emissive: '#0d4f49',
-    emissiveIntensity: 0.32,
-  });
-  private readonly rightWingMaterial = this.leftWingMaterial.clone();
-  private readonly tailMaterial = this.leftWingMaterial.clone();
-  private readonly glassMaterial = new THREE.MeshStandardMaterial({
-    color: '#122c39',
-    roughness: 0.14,
-    metalness: 0.12,
-    emissive: '#143847',
-    emissiveIntensity: 0.24,
-  });
-  private readonly propellerMaterial = new THREE.MeshStandardMaterial({
-    color: '#17191b',
-    roughness: 0.58,
-    metalness: 0.18,
-  });
-  private readonly trimMaterial = new THREE.MeshStandardMaterial({
-    color: '#f4f0df',
-    roughness: 0.28,
-    metalness: 0.2,
-    emissive: '#0d4f69',
-    emissiveIntensity: 0.18,
-  });
-  private readonly fuselageGeometry = new THREE.CylinderGeometry(0.28, 0.42, 2.6, 18);
-  private readonly noseGeometry = new THREE.ConeGeometry(0.32, 0.66, 18);
-  private readonly wingGeometry = new THREE.BoxGeometry(3.25, 0.08, 0.54);
-  private readonly tailWingGeometry = new THREE.BoxGeometry(1.28, 0.06, 0.32);
-  private readonly finGeometry = new THREE.BoxGeometry(0.1, 0.72, 0.34);
-  private readonly canopyGeometry = new THREE.SphereGeometry(0.36, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-  private readonly propellerGeometry = new THREE.BoxGeometry(0.12, 1.18, 0.04);
-  private readonly propellerHubGeometry = new THREE.SphereGeometry(0.12, 12, 8);
-  private readonly bodyStripeGeometry = new THREE.BoxGeometry(0.09, 0.035, 1.92);
-  private readonly wingStripeGeometry = new THREE.BoxGeometry(0.09, 0.024, 0.78);
-  private readonly tailMarkGeometry = new THREE.BoxGeometry(0.12, 0.032, 0.34);
-  private readonly propeller = new THREE.Group();
+  private aircraftId: AircraftSkinId = 'standard';
+  private aircraft: AircraftModel = createAircraftModel(this.aircraftId);
+  private bodyBaseEmissive: Array<{ material: THREE.MeshStandardMaterial; color: THREE.Color; intensity: number }> = [];
+  private readonly impactEmissive = new THREE.Color('#ff3d20');
 
   constructor() {
     this.group.rotation.order = 'YXZ';
-    const fuselage = new THREE.Mesh(this.fuselageGeometry, this.bodyMaterial);
-    fuselage.rotation.x = Math.PI / 2;
-    fuselage.castShadow = true;
-    fuselage.receiveShadow = true;
-    this.group.add(fuselage);
-
-    const nose = new THREE.Mesh(this.noseGeometry, this.bodyMaterial);
-    nose.rotation.x = -Math.PI / 2;
-    nose.position.z = -1.62;
-    nose.castShadow = true;
-    this.group.add(nose);
-
-    const leftWing = new THREE.Mesh(this.wingGeometry, this.leftWingMaterial);
-    leftWing.position.set(-0.82, -0.02, -0.18);
-    leftWing.scale.x = 0.5;
-    leftWing.castShadow = true;
-    leftWing.receiveShadow = true;
-    this.group.add(leftWing);
-
-    const rightWing = new THREE.Mesh(this.wingGeometry, this.rightWingMaterial);
-    rightWing.position.set(0.82, -0.02, -0.18);
-    rightWing.scale.x = 0.5;
-    rightWing.castShadow = true;
-    rightWing.receiveShadow = true;
-    this.group.add(rightWing);
-
-    const tail = new THREE.Mesh(this.tailWingGeometry, this.tailMaterial);
-    tail.position.set(0, 0.08, 1.12);
-    tail.castShadow = true;
-    this.group.add(tail);
-
-    const fin = new THREE.Mesh(this.finGeometry, this.tailMaterial);
-    fin.position.set(0, 0.42, 1.08);
-    fin.castShadow = true;
-    this.group.add(fin);
-
-    const canopy = new THREE.Mesh(this.canopyGeometry, this.glassMaterial);
-    canopy.position.set(0, 0.27, -0.36);
-    canopy.scale.set(1, 0.72, 1.18);
-    canopy.castShadow = true;
-    this.group.add(canopy);
-
-    const bodyStripe = new THREE.Mesh(this.bodyStripeGeometry, this.trimMaterial);
-    bodyStripe.position.set(0, 0.43, -0.22);
-    bodyStripe.castShadow = true;
-    this.group.add(bodyStripe);
-
-    const leftWingStripe = new THREE.Mesh(this.wingStripeGeometry, this.trimMaterial);
-    leftWingStripe.position.set(-0.88, 0.035, -0.2);
-    leftWingStripe.rotation.y = 0.72;
-    leftWingStripe.castShadow = true;
-    this.group.add(leftWingStripe);
-
-    const rightWingStripe = new THREE.Mesh(this.wingStripeGeometry, this.trimMaterial);
-    rightWingStripe.position.set(0.88, 0.035, -0.2);
-    rightWingStripe.rotation.y = -0.72;
-    rightWingStripe.castShadow = true;
-    this.group.add(rightWingStripe);
-
-    const tailMark = new THREE.Mesh(this.tailMarkGeometry, this.trimMaterial);
-    tailMark.position.set(0, 0.5, 1.11);
-    tailMark.castShadow = true;
-    this.group.add(tailMark);
-
-    const bladeA = new THREE.Mesh(this.propellerGeometry, this.propellerMaterial);
-    const bladeB = new THREE.Mesh(this.propellerGeometry, this.propellerMaterial);
-    bladeB.rotation.z = Math.PI / 2;
-    const hub = new THREE.Mesh(this.propellerHubGeometry, this.propellerMaterial);
-    this.propeller.position.z = -1.98;
-    this.propeller.add(bladeA, bladeB, hub);
-    this.group.add(this.propeller);
+    this.group.add(this.aircraft.group);
+    this.captureBodyEmissive();
   }
 
   update(delta: number, elapsed: number, input: InputController, tuning: PlayerTuning, bounds: ArenaBounds): void {
@@ -203,21 +91,35 @@ export class Player {
     this.group.position.y += Math.sin(elapsed * 6.5) * 0.004;
 
     this.propellerSpin += delta * (32 + this.speed * 2.8);
-    this.propeller.rotation.z = this.propellerSpin;
+    for (const propeller of this.aircraft.propellers) propeller.rotation.z = this.propellerSpin;
+    const exhaustPulse = 0.92 + Math.sin(elapsed * 18) * 0.12 + Math.min(0.35, Math.abs(this.speed) * 0.012);
+    for (const exhaust of this.aircraft.exhausts) {
+      exhaust.scale.setScalar(exhaustPulse);
+      exhaust.material.emissiveIntensity = 0.68 + exhaustPulse * 0.42;
+    }
   }
 
   applySkin(skinId: AircraftSkinId): void {
-    const skin = AIRCRAFT_SKINS[skinId];
-    applyMaterialStyle(this.bodyMaterial, skin.body);
-    this.bodyBaseEmissive.copy(this.bodyMaterial.emissive);
-    this.bodyBaseEmissiveIntensity = this.bodyMaterial.emissiveIntensity;
+    if (skinId === this.aircraftId) return;
+    this.group.remove(this.aircraft.group);
+    this.aircraft.dispose();
+    this.aircraftId = skinId;
+    this.aircraft = createAircraftModel(skinId);
+    this.group.add(this.aircraft.group);
+    this.captureBodyEmissive();
     this.updateBodyEmissive();
-    applyMaterialStyle(this.leftWingMaterial, skin.wing);
-    applyMaterialStyle(this.rightWingMaterial, skin.wing);
-    applyMaterialStyle(this.tailMaterial, skin.wing);
-    applyMaterialStyle(this.glassMaterial, skin.canopy);
-    applyMaterialStyle(this.trimMaterial, skin.trim);
-    applyMaterialStyle(this.propellerMaterial, skin.propeller);
+  }
+
+  getAircraftId(): AircraftSkinId {
+    return this.aircraftId;
+  }
+
+  getAircraftRecipe(): string {
+    return AIRCRAFT_SKINS[this.aircraftId].recipe;
+  }
+
+  getPropulsionType(): 'propeller' | 'jet' {
+    return this.aircraft.propellers.length > 0 ? 'propeller' : 'jet';
   }
 
   applyImpact(retain = 0.5): void {
@@ -252,28 +154,21 @@ export class Player {
   }
 
   private updateBodyEmissive(): void {
-    this.bodyMaterial.emissive.copy(this.bodyBaseEmissive).lerp(this.impactEmissive, this.hitFlash);
-    this.bodyMaterial.emissiveIntensity = THREE.MathUtils.lerp(this.bodyBaseEmissiveIntensity, 1, this.hitFlash);
+    for (const base of this.bodyBaseEmissive) {
+      base.material.emissive.copy(base.color).lerp(this.impactEmissive, this.hitFlash);
+      base.material.emissiveIntensity = THREE.MathUtils.lerp(base.intensity, 1, this.hitFlash);
+    }
+  }
+
+  private captureBodyEmissive(): void {
+    this.bodyBaseEmissive = this.aircraft.bodyMaterials.map((material) => ({
+      material,
+      color: material.emissive.clone(),
+      intensity: material.emissiveIntensity,
+    }));
   }
 
   dispose(): void {
-    this.fuselageGeometry.dispose();
-    this.noseGeometry.dispose();
-    this.wingGeometry.dispose();
-    this.tailWingGeometry.dispose();
-    this.finGeometry.dispose();
-    this.canopyGeometry.dispose();
-    this.propellerGeometry.dispose();
-    this.propellerHubGeometry.dispose();
-    this.bodyStripeGeometry.dispose();
-    this.wingStripeGeometry.dispose();
-    this.tailMarkGeometry.dispose();
-    this.bodyMaterial.dispose();
-    this.leftWingMaterial.dispose();
-    this.rightWingMaterial.dispose();
-    this.tailMaterial.dispose();
-    this.glassMaterial.dispose();
-    this.propellerMaterial.dispose();
-    this.trimMaterial.dispose();
+    this.aircraft.dispose();
   }
 }

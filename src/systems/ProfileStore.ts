@@ -6,6 +6,7 @@ import {
 } from './Customization';
 
 export type PlayerProfile = {
+  playerName: string;
   coins: number;
   selectedSkin: AircraftSkinId;
   ownedSkins: AircraftSkinId[];
@@ -20,10 +21,17 @@ export const COIN_REWARDS = {
 } as const;
 
 export const DEFAULT_PROFILE: PlayerProfile = {
+  playerName: '飞行员',
   coins: 0,
   selectedSkin: DEFAULT_SKIN,
   ownedSkins: [DEFAULT_SKIN],
 };
+
+export function normalizePlayerName(value: unknown): string {
+  if (typeof value !== 'string') return DEFAULT_PROFILE.playerName;
+  const normalized = value.trim().replace(/\s+/g, ' ').slice(0, 12);
+  return normalized || DEFAULT_PROFILE.playerName;
+}
 
 function getStorage(storage?: Storage): Storage | null {
   try {
@@ -40,6 +48,7 @@ function uniqueSkins(values: AircraftSkinId[]): AircraftSkinId[] {
 function cloneProfile(profile: PlayerProfile): PlayerProfile {
   const selectedSkin = isAircraftSkinId(profile.selectedSkin) ? profile.selectedSkin : DEFAULT_SKIN;
   return {
+    playerName: normalizePlayerName(profile.playerName),
     coins: Math.max(0, Math.floor(profile.coins)),
     selectedSkin,
     ownedSkins: uniqueSkins(profile.ownedSkins.filter(isAircraftSkinId).concat(selectedSkin)),
@@ -66,6 +75,7 @@ function normalizeProfile(value: unknown): PlayerProfile {
     : [selectedSkin];
 
   return cloneProfile({
+    playerName: normalizePlayerName(candidate.playerName),
     coins: typeof candidate.coins === 'number' && Number.isFinite(candidate.coins) ? candidate.coins : 0,
     selectedSkin,
     ownedSkins,
@@ -118,6 +128,7 @@ export function selectOrBuySkin(
   if (profile.coins < skinDefinition.cost) return { profile, ok: false, reason: 'insufficient-coins' };
   return {
     profile: {
+      ...profile,
       coins: profile.coins - skinDefinition.cost,
       selectedSkin: skin,
       ownedSkins: uniqueSkins([...profile.ownedSkins, skin]),

@@ -23,6 +23,7 @@ export class InputController {
 
   private dashDown = false;
   private fireDown = false;
+  private missilePressed = false;
   private pausePressed = false;
   private usingTouchStick = false;
   private enabled = false;
@@ -89,8 +90,12 @@ export class InputController {
   };
 
   private readonly onMouseDown = (event: MouseEvent) => {
+    if (!this.enabled) return;
     if (event.button === 0) {
       this.fireDown = true;
+    } else if (event.button === 2) {
+      event.preventDefault();
+      this.missilePressed = true;
     }
   };
 
@@ -98,6 +103,10 @@ export class InputController {
     if (event.button === 0) {
       this.fireDown = false;
     }
+  };
+
+  private readonly onContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
   };
 
   private readonly onMouseMove = (event: MouseEvent) => {
@@ -111,6 +120,7 @@ export class InputController {
   private readonly onBlur = () => {
     this.dashDown = false;
     this.fireDown = false;
+    this.missilePressed = false;
     this.mouseAim.set(0, 0);
     this.updateReticle();
   };
@@ -125,6 +135,7 @@ export class InputController {
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mouseup', this.onMouseUp);
+    window.addEventListener('contextmenu', this.onContextMenu);
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('blur', this.onBlur);
     this.stick.addEventListener('pointerdown', this.onStickDown);
@@ -173,11 +184,18 @@ export class InputController {
     return this.enabled && this.fireDown;
   }
 
+  consumeMissile(): boolean {
+    const pressed = this.enabled && this.missilePressed;
+    this.missilePressed = false;
+    return pressed;
+  }
+
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
       this.dashDown = false;
       this.fireDown = false;
+      this.missilePressed = false;
       this.pointer.set(0, 0);
       this.mouseAim.set(0, 0);
       this.updateKnob();
@@ -196,6 +214,7 @@ export class InputController {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mouseup', this.onMouseUp);
+    window.removeEventListener('contextmenu', this.onContextMenu);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('blur', this.onBlur);
     this.stick.removeEventListener('pointerdown', this.onStickDown);

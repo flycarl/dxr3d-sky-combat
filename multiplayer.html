@@ -33,9 +33,9 @@
             </div>
             <p id="multiplayer-status">房主创建房间后，把邀请码告诉朋友。</p>
           </section>
-          <section id="customization-shop" aria-label="飞机皮肤">
-            <h2>飞机皮肤</h2>
-            <p id="shop-message">金币与单人版同步。买过的整机皮肤可以免费切换。</p>
+          <section id="customization-shop" aria-label="飞机机库">
+            <h2>飞机机库</h2>
+            <p id="shop-message">金币与单人版同步。解锁的完整飞机机型可以免费切换。</p>
             <div id="customization-grid"></div>
           </section>
         </div>
@@ -65,12 +65,17 @@
           <span>金币</span>
           <strong id="hud-coin-value">0</strong>
         </div>
+        <div class="hud-metric missile-meter">
+          <span>导弹</span>
+          <strong id="missile-cooldown-value">就绪</strong>
+        </div>
         <div class="boost-meter" aria-hidden="true">
           <div id="boost-fill"></div>
         </div>
         <div id="status-line">躲避敌机火力</div>
         <div id="reward-flash" aria-live="polite"></div>
       </section>
+      <div id="kill-feed" aria-live="polite"></div>
       <button id="pause-button" type="button" aria-label="暂停">暂停</button>
       <section id="game-overlay" aria-live="assertive">
         <h1 id="overlay-title">已暂停</h1>

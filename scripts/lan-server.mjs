@@ -188,7 +188,9 @@ wss.on('connection', (socket) => {
     } else if (message.type === 'hit') {
       const target = clients.get(String(message.targetId));
       if (!target || target.roomCode !== client.roomCode || target.health <= 0) return;
-      target.health = Math.max(0, target.health - 1);
+      const damage = Math.max(1, Math.min(5, Math.floor(Number(message.damage) || 1)));
+      const weapon = message.weapon === 'missile' ? 'missile' : 'bullet';
+      target.health = Math.max(0, target.health - damage);
       if (target.health === 0) {
         client.kills += 1;
         if (client.mode === 'three-lives') target.lives = Math.max(0, target.lives - 1);
@@ -204,6 +206,8 @@ wss.on('connection', (socket) => {
         targetId: target.id,
         health: target.health,
         lives: target.lives,
+        damage,
+        weapon,
       });
       const room = rooms.get(client.roomCode);
       broadcast(client.roomCode, {
