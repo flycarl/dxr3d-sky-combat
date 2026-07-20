@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111619" />
+    <title>天空空战联机版</title>
+    <script type="module" crossorigin src="/dxr3d-sky-combat/assets/main-DAz3QOvz.js"></script>
+    <link rel="stylesheet" crossorigin href="/dxr3d-sky-combat/assets/main-CFqOXsVj.css">
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game-canvas" aria-label="可游玩的 3D 飞机空战画布"></canvas>
+      <section id="start-screen">
+        <h1>天空空战联机版</h1>
+        <p>点击开始后鼠标会像射击游戏一样锁定。移动圆圈操控飞机，用准心开火；可单人作战，也可同一 Wi-Fi 用邀请码三人联机。</p>
+        <div id="menu-panel">
+          <div id="coin-card">
+            <span>金币</span>
+            <strong id="coin-balance">0</strong>
+          </div>
+          <button id="start-button" type="button">开始单人</button>
+          <section id="multiplayer-panel" aria-label="局域网联机">
+            <h2>局域网联机</h2>
+            <div id="multiplayer-controls">
+              <select id="match-mode" aria-label="玩法">
+                <option value="deathmatch">死亡竞赛</option>
+                <option value="three-lives">三条命</option>
+                <option value="timed-kills">限时击杀</option>
+              </select>
+              <button id="create-room-button" type="button">创建房间</button>
+              <input id="invite-code" type="text" maxlength="4" placeholder="邀请码" aria-label="邀请码" />
+              <button id="join-room-button" type="button">加入房间</button>
+              <input id="server-url" type="hidden" value="" aria-hidden="true" />
+            </div>
+            <p id="multiplayer-status">创建房间后，把邀请码告诉朋友。</p>
+          </section>
+          <section id="customization-shop" aria-label="飞机机库">
+            <h2>飞机机库</h2>
+            <p id="shop-message">用金币解锁完整飞机机型；每架都有独立机身与机翼结构。</p>
+            <div id="customization-grid"></div>
+          </section>
+        </div>
+      </section>
+      <section id="hud" aria-live="polite">
+        <div class="hud-metric">
+          <span>受击</span>
+          <strong><span id="gate-value">0</span>/<span id="target-value">7</span></strong>
+        </div>
+        <div class="hud-metric">
+          <span>计时</span>
+          <strong id="timer-value">00:00</strong>
+        </div>
+        <div class="hud-metric">
+          <span>速度</span>
+          <strong><span id="speed-value">000</span> <small>kt</small></strong>
+        </div>
+        <div class="hud-metric">
+          <span>高度</span>
+          <strong><span id="altitude-value">000</span> <small>m</small></strong>
+        </div>
+        <div class="hud-metric damage-meter">
+          <span>机体</span>
+          <strong id="damage-value">0%</strong>
+        </div>
+        <div class="hud-metric coin-meter">
+          <span>金币</span>
+          <strong id="hud-coin-value">0</strong>
+        </div>
+        <div class="hud-metric missile-meter">
+          <span>导弹</span>
+          <strong id="missile-cooldown-value">就绪</strong>
+        </div>
+        <div class="boost-meter" aria-hidden="true">
+          <div id="boost-fill"></div>
+        </div>
+        <div id="status-line">躲避敌机火力</div>
+        <div id="reward-flash" aria-live="polite"></div>
+      </section>
+      <div id="kill-feed" aria-live="polite"></div>
+      <button id="pause-button" type="button" aria-label="暂停">暂停</button>
+      <section id="game-overlay" aria-live="assertive">
+        <h1 id="overlay-title">已暂停</h1>
+        <p id="overlay-text">按 P 或 Esc 继续</p>
+        <div id="overlay-actions">
+          <button id="retry-button" type="button">重来</button>
+          <button id="menu-button" type="button">主菜单</button>
+        </div>
+      </section>
+      <div id="reticle" aria-hidden="true">
+        <span></span>
+      </div>
+      <div id="weapon-crosshair" aria-hidden="true">
+        <span></span>
+      </div>
+      <div id="damage-direction" aria-hidden="true"></div>
+      <div id="touch-controls" aria-hidden="true">
+        <div id="touch-stick">
+          <div id="touch-knob"></div>
+        </div>
+        <button id="dash-button" type="button">加速</button>
+      </div>
+    </main>
+  </body>
+</html>
